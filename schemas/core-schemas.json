@@ -2,200 +2,1304 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://example.invalid/jointcheck/schemas/core-schemas.json",
   "title": "JointCheck core contracts",
-  "description": "FROZEN after ticket B-T11. SPEC.md §4 is the authoritative prose. This file is the machine-checkable contract consumed by backend/app/models.py (Pydantic v2) and backend/tests/test_schemas.py.",
+  "description": "JointCheck JSON Schema contracts. Each named type is defined under $defs and validated by backend/tests/test_schemas.py.",
   "schema_version": "1.0.0",
-
   "$defs": {
-
     "ImageContext": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["id", "source", "sha256", "width", "height", "blur_laplacian_var", "exposure_clipped_pct", "calibrated", "calibration_method"],
+      "required": [
+        "id",
+        "source",
+        "sha256",
+        "width",
+        "height",
+        "blur_laplacian_var",
+        "exposure_clipped_pct",
+        "calibrated",
+        "calibration_method"
+      ],
       "properties": {
-        "id": {"type": "string", "pattern": "^img_"},
-        "source": {"enum": ["upload", "fixture", "video_frame"]},
-        "sha256": {"type": "string"},
-        "width": {"type": "integer", "minimum": 1},
-        "height": {"type": "integer", "minimum": 1},
-        "dpi": {"type": ["number", "null"]},
-        "orientation_corrected": {"type": "boolean"},
-        "blur_laplacian_var": {"type": "number", "minimum": 0, "description": "Variance of the Laplacian. Below image_quality_floors.blur_laplacian_var_min the gate abstains with 'image_quality_insufficient'."},
-        "exposure_clipped_pct": {"type": "number", "minimum": 0, "maximum": 100},
-        "white_balance_offset": {"type": ["number", "null"]},
-        "calibrated": {"type": "boolean"},
-        "calibration_method": {"enum": ["printed_target", "reference_object_coin", "reference_object_header_pitch", "user_supplied", "none"]},
-        "mm_per_px": {"type": ["number", "null"], "exclusiveMinimum": 0},
-        "calibration_evidence": {"type": ["object", "null"], "properties": {"reference": {"type": "string"}, "known_dimension_mm": {"type": "number"}, "detected_px": {"type": "number"}, "warp_error": {"type": ["number", "null"]}, "overlay_path": {"type": ["string", "null"]}}},
-        "modality": {"enum": ["optical", "xray"], "default": "optical", "description": "BGA voiding requires xray. An optical BGA void_fraction must abstain with 'modality_mismatch_bga_optical'."},
-        "exif": {"type": ["object", "null"]},
-        "notes": {"type": ["string", "null"]}
+        "id": {
+          "type": "string",
+          "pattern": "^img_"
+        },
+        "source": {
+          "enum": [
+            "upload",
+            "fixture",
+            "video_frame"
+          ]
+        },
+        "sha256": {
+          "type": "string"
+        },
+        "width": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "height": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "dpi": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "orientation_corrected": {
+          "type": "boolean"
+        },
+        "blur_laplacian_var": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Variance of the Laplacian. Below image_quality_floors.blur_laplacian_var_min the gate abstains with 'image_quality_insufficient'."
+        },
+        "exposure_clipped_pct": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "white_balance_offset": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "calibrated": {
+          "type": "boolean"
+        },
+        "calibration_method": {
+          "enum": [
+            "printed_target",
+            "reference_object_coin",
+            "reference_object_header_pitch",
+            "user_supplied",
+            "none"
+          ]
+        },
+        "mm_per_px": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "exclusiveMinimum": 0
+        },
+        "calibration_evidence": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "properties": {
+            "reference": {
+              "type": "string"
+            },
+            "known_dimension_mm": {
+              "type": "number"
+            },
+            "detected_px": {
+              "type": "number"
+            },
+            "warp_error": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "overlay_path": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        },
+        "modality": {
+          "enum": [
+            "optical",
+            "xray"
+          ],
+          "default": "optical",
+          "description": "BGA voiding requires xray. An optical BGA void_fraction must abstain with 'modality_mismatch_bga_optical'."
+        },
+        "exif": {
+          "type": [
+            "object",
+            "null"
+          ]
+        },
+        "notes": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
       },
-      "allOf": [{"if": {"properties": {"calibrated": {"const": true}}}, "then": {"required": ["mm_per_px", "calibration_evidence"], "properties": {"mm_per_px": {"type": "number"}}}}]
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "calibrated": {
+                "const": true
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "mm_per_px",
+              "calibration_evidence"
+            ],
+            "properties": {
+              "mm_per_px": {
+                "type": "number"
+              }
+            }
+          }
+        }
+      ]
     },
-
     "JointROI": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["id", "bbox", "joint_type", "detection_basis", "confidence", "crop_sha256"],
+      "required": [
+        "id",
+        "bbox",
+        "joint_type",
+        "detection_basis",
+        "confidence",
+        "crop_sha256"
+      ],
       "properties": {
-        "id": {"type": "string", "pattern": "^j_"},
-        "bbox": {"type": "object", "required": ["x", "y", "w", "h"], "properties": {"x": {"type": "integer", "minimum": 0}, "y": {"type": "integer", "minimum": 0}, "w": {"type": "integer", "minimum": 1}, "h": {"type": "integer", "minimum": 1}}},
-        "joint_type": {"enum": ["through_hole", "smd_gull_wing", "smd_rectangular", "bga", "j_lead", "wire_terminal", "hand_pad", "connector_pin", "other"]},
-        "detection_basis": {"enum": ["cv_contour", "vision_model", "both"], "description": "LAW: a box may never be detection_basis='vision_model' alone unless CV also proposed a candidate there. The model confirms and names; it may not create evidence. Asserted in tests/test_s1_s2.py."},
-        "confidence": {"type": "number", "minimum": 0, "maximum": 1},
-        "crop_sha256": {"type": "string"},
-        "crop_path": {"type": ["string", "null"]},
-        "degraded_mode": {"type": "boolean", "default": false, "description": "True when the vision model was unreachable and only CV boxes are available. The UI MUST show a degraded notice."}
+        "id": {
+          "type": "string",
+          "pattern": "^j_"
+        },
+        "bbox": {
+          "type": "object",
+          "required": [
+            "x",
+            "y",
+            "w",
+            "h"
+          ],
+          "properties": {
+            "x": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "y": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "w": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "h": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        },
+        "joint_type": {
+          "enum": [
+            "through_hole",
+            "smd_gull_wing",
+            "smd_rectangular",
+            "bga",
+            "j_lead",
+            "wire_terminal",
+            "hand_pad",
+            "connector_pin",
+            "other"
+          ]
+        },
+        "detection_basis": {
+          "enum": [
+            "cv_contour",
+            "vision_model",
+            "both"
+          ],
+          "description": "LAW: a box may never be detection_basis='vision_model' alone unless CV also proposed a candidate there. The model confirms and names; it may not create evidence. Asserted in tests/test_s1_s2.py."
+        },
+        "confidence": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "crop_sha256": {
+          "type": "string"
+        },
+        "crop_path": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "degraded_mode": {
+          "type": "boolean",
+          "default": false,
+          "description": "True when the vision model was unreachable and only CV boxes are available. The UI MUST show a degraded notice."
+        }
       }
     },
-
     "Measurement": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["id", "roi_id", "quantity", "computable"],
+      "required": [
+        "id",
+        "roi_id",
+        "quantity",
+        "computable"
+      ],
       "properties": {
-        "id": {"type": "string", "pattern": "^m_"},
-        "roi_id": {"type": "string"},
-        "quantity": {"enum": ["fillet_area_mm2", "wetting_angle_deg", "solder_coverage_pct", "solder_volume_ratio", "bridge_gap_mm", "icicle_length_mm", "solder_ball_diameter_mm", "tombstone_lift_deg", "insulation_clearance_mm", "wire_strand_exposure_mm", "flux_residue_area_pct", "void_fraction", "joint_height_mm"]},
-        "value": {"type": ["number", "null"]},
-        "unit": {"type": ["string", "null"]},
-        "mm_per_px_used": {"type": ["number", "null"]},
-        "derivation": {"type": ["string", "null"], "description": "Human-readable pixel derivation. Required when computable=true."},
-        "pixel_evidence": {"type": ["object", "null"], "properties": {"mask_sha256": {"type": "string"}, "overlay_path": {"type": "string"}}},
-        "computable": {"type": "boolean"},
-        "not_computable_reason": {"type": ["string", "null"], "enum": [null, "uncalibrated", "component_contour_not_resolvable", "occluded", "out_of_frame", "modality_mismatch", "insufficient_resolution", "segmentation_ambiguous", "reference_not_visible"]},
-        "confidence": {"type": ["number", "null"], "minimum": 0, "maximum": 1}
+        "id": {
+          "type": "string",
+          "pattern": "^m_"
+        },
+        "roi_id": {
+          "type": "string"
+        },
+        "quantity": {
+          "enum": [
+            "fillet_area_mm2",
+            "wetting_angle_deg",
+            "solder_coverage_pct",
+            "solder_volume_ratio",
+            "bridge_gap_mm",
+            "icicle_length_mm",
+            "solder_ball_diameter_mm",
+            "tombstone_lift_deg",
+            "insulation_clearance_mm",
+            "wire_strand_exposure_mm",
+            "flux_residue_area_pct",
+            "void_fraction",
+            "joint_height_mm"
+          ]
+        },
+        "value": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "unit": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "mm_per_px_used": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "derivation": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Human-readable pixel derivation. Required when computable=true."
+        },
+        "pixel_evidence": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "properties": {
+            "mask_sha256": {
+              "type": "string"
+            },
+            "overlay_path": {
+              "type": "string"
+            }
+          }
+        },
+        "computable": {
+          "type": "boolean"
+        },
+        "not_computable_reason": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            null,
+            "uncalibrated",
+            "component_contour_not_resolvable",
+            "occluded",
+            "out_of_frame",
+            "modality_mismatch",
+            "insufficient_resolution",
+            "segmentation_ambiguous",
+            "reference_not_visible"
+          ]
+        },
+        "confidence": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 1
+        }
       },
       "allOf": [
-        {"if": {"properties": {"computable": {"const": true}}, "required": ["computable"]}, "then": {"required": ["value", "derivation", "unit"], "properties": {"value": {"type": "number"}}}, "description": "LAW: computable=true with value=null is a lie and MUST fail schema validation."},
-        {"if": {"properties": {"computable": {"const": false}}, "required": ["computable"]}, "then": {"required": ["not_computable_reason"], "properties": {"value": {"const": null}}}}
+        {
+          "if": {
+            "properties": {
+              "computable": {
+                "const": true
+              }
+            },
+            "required": [
+              "computable"
+            ]
+          },
+          "then": {
+            "required": [
+              "value",
+              "derivation",
+              "unit"
+            ],
+            "properties": {
+              "value": {
+                "type": "number"
+              }
+            }
+          },
+          "description": "LAW: computable=true with value=null is a lie and MUST fail schema validation."
+        },
+        {
+          "if": {
+            "properties": {
+              "computable": {
+                "const": false
+              }
+            },
+            "required": [
+              "computable"
+            ]
+          },
+          "then": {
+            "required": [
+              "not_computable_reason"
+            ],
+            "properties": {
+              "value": {
+                "const": null
+              }
+            }
+          }
+        }
       ]
     },
-
     "ConditionFinding": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["id", "roi_id", "condition_code", "measurement_basis", "confidence"],
+      "required": [
+        "id",
+        "roi_id",
+        "condition_code",
+        "measurement_basis",
+        "confidence"
+      ],
       "properties": {
-        "id": {"type": "string", "pattern": "^c_"},
-        "roi_id": {"type": "string"},
-        "condition_code": {"type": "string", "description": "MUST be a member of data/condition-codes.json. Enforced in code, not just schema; out-of-vocabulary codes are dropped and recorded as rejections."},
-        "measurement_basis": {"enum": ["measured", "visual_only"], "description": "LAW: 'measured' requires ≥1 supporting_measurement_id whose value is non-null. Otherwise downgraded to 'visual_only' in code."},
-        "supporting_measurement_ids": {"type": "array", "items": {"type": "string", "pattern": "^m_"}, "default": []},
-        "confidence": {"type": "number", "minimum": 0, "maximum": 1},
-        "model": {"type": ["string", "null"]},
-        "ledger_id": {"type": ["string", "null"]},
-        "downgraded_from": {"type": ["string", "null"], "description": "'measured' when the code downgraded the model's claim. Surfaced in the UI — showing corrections is a trust feature."}
+        "id": {
+          "type": "string",
+          "pattern": "^c_"
+        },
+        "roi_id": {
+          "type": "string"
+        },
+        "condition_code": {
+          "type": "string",
+          "description": "MUST be a member of data/condition-codes.json. Enforced in code, not just schema; out-of-vocabulary codes are dropped and recorded as rejections."
+        },
+        "measurement_basis": {
+          "enum": [
+            "measured",
+            "visual_only"
+          ],
+          "description": "LAW: 'measured' requires ≥1 supporting_measurement_id whose value is non-null. Otherwise downgraded to 'visual_only' in code."
+        },
+        "supporting_measurement_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^m_"
+          },
+          "default": []
+        },
+        "confidence": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "model": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "ledger_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "downgraded_from": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "'measured' when the code downgraded the model's claim. Surfaced in the UI — showing corrections is a trust feature."
+        }
       }
     },
-
     "RuleVerdict": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["id", "roi_id", "condition_code", "class", "verdict", "rule_id", "citation_ids", "rules_table_version_hash"],
+      "required": [
+        "id",
+        "roi_id",
+        "condition_code",
+        "class",
+        "verdict",
+        "rule_id",
+        "citation_ids",
+        "rules_table_version_hash"
+      ],
       "properties": {
-        "id": {"type": "string", "pattern": "^v_"},
-        "roi_id": {"type": "string"},
-        "condition_code": {"type": "string"},
-        "class": {"enum": [1, 2, 3], "description": "'class' is a Python keyword — in Pydantic use an alias, e.g. Field(alias='class')."},
-        "verdict": {"enum": ["ACCEPT", "PROCESS_INDICATOR", "REJECT", "UNDETERMINED"]},
-        "rule_id": {"type": "string", "pattern": "^JC-"},
-        "threshold_expression": {"type": ["string", "null"], "description": "e.g. 'solder_coverage_pct >= 75'"},
-        "measured_value": {"type": ["number", "null"]},
-        "threshold_value": {"type": ["number", "null"]},
-        "comparison": {"type": ["string", "null"], "enum": [null, "met", "not_met", "not_applicable"]},
-        "class_independent": {"type": "boolean", "default": false, "description": "True for JC-BRD-001, JC-DIS-001, JC-LND-001, JC-POL-001. Surfaced in the UI: 'this criterion does not change with class' — reinforces the insight."},
-        "citation_ids": {"type": "array", "minItems": 1, "items": {"type": "string", "pattern": "^cit_"}, "description": "MUST cite the rule AND, where a threshold comparison occurred, the measurement."},
-        "rules_table_version_hash": {"type": "string"}
+        "id": {
+          "type": "string",
+          "pattern": "^v_"
+        },
+        "roi_id": {
+          "type": "string"
+        },
+        "condition_code": {
+          "type": "string"
+        },
+        "class": {
+          "enum": [
+            1,
+            2,
+            3
+          ],
+          "description": "'class' is a Python keyword — in Pydantic use an alias, e.g. Field(alias='class')."
+        },
+        "verdict": {
+          "enum": [
+            "ACCEPT",
+            "PROCESS_INDICATOR",
+            "REJECT",
+            "UNDETERMINED"
+          ]
+        },
+        "rule_id": {
+          "type": "string",
+          "pattern": "^JC-"
+        },
+        "threshold_expression": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "e.g. 'solder_coverage_pct >= 75'"
+        },
+        "measured_value": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "threshold_value": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "comparison": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            null,
+            "met",
+            "not_met",
+            "not_applicable"
+          ]
+        },
+        "class_independent": {
+          "type": "boolean",
+          "default": false,
+          "description": "True for JC-BRD-001, JC-DIS-001, JC-LND-001, JC-POL-001. Surfaced in the UI: 'this criterion does not change with class' — reinforces the insight."
+        },
+        "citation_ids": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "pattern": "^cit_"
+          },
+          "description": "MUST cite the rule AND, where a threshold comparison occurred, the measurement."
+        },
+        "rules_table_version_hash": {
+          "type": "string"
+        }
       }
     },
-
     "Abstention": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["reason", "message", "fix_instruction"],
+      "required": [
+        "reason",
+        "message",
+        "fix_instruction"
+      ],
       "properties": {
-        "reason": {"enum": ["uncalibrated", "image_quality_insufficient", "measurement_not_computable", "visual_confidence_below_floor", "rule_unreviewed", "no_rule_for_condition", "modality_mismatch_bga_optical", "budget_exceeded", "vision_model_unavailable"]},
-        "scope": {"enum": ["board", "roi", "condition"]},
-        "roi_id": {"type": ["string", "null"]},
-        "condition_code": {"type": ["string", "null"]},
-        "message": {"type": "string"},
-        "fix_instruction": {"type": "string", "description": "REQUIRED and must be concrete and actionable, e.g. 'Re-shoot with the printed calibration target beside the board, in the same focal plane.' An abstention without a fix instruction is a dead end for the user."},
-        "observed_values": {"type": ["object", "null"]}
+        "reason": {
+          "enum": [
+            "uncalibrated",
+            "image_quality_insufficient",
+            "measurement_not_computable",
+            "visual_confidence_below_floor",
+            "rule_unreviewed",
+            "no_rule_for_condition",
+            "modality_mismatch_bga_optical",
+            "budget_exceeded",
+            "vision_model_unavailable"
+          ]
+        },
+        "scope": {
+          "enum": [
+            "board",
+            "roi",
+            "condition"
+          ]
+        },
+        "roi_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "condition_code": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "message": {
+          "type": "string"
+        },
+        "fix_instruction": {
+          "type": "string",
+          "description": "REQUIRED and must be concrete and actionable, e.g. 'Re-shoot with the printed calibration target beside the board, in the same focal plane.' An abstention without a fix instruction is a dead end for the user."
+        },
+        "observed_values": {
+          "type": [
+            "object",
+            "null"
+          ]
+        }
       }
     },
-
     "BoardReport": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["report_id", "board_id", "class", "image_context", "rois", "measurements", "condition_findings", "rule_verdicts", "gate", "summary", "cost", "timings_ms", "generated_at", "rules_table_version_hash", "disclaimer"],
+      "required": [
+        "report_id",
+        "board_id",
+        "class",
+        "image_context",
+        "rois",
+        "measurements",
+        "condition_findings",
+        "rule_verdicts",
+        "gate",
+        "summary",
+        "cost",
+        "timings_ms",
+        "generated_at",
+        "rules_table_version_hash",
+        "disclaimer"
+      ],
       "properties": {
-        "report_id": {"type": "string", "pattern": "^rep_"},
-        "board_id": {"type": "string"},
-        "class": {"enum": [1, 2, 3]},
-        "image_context": {"$ref": "#/$defs/ImageContext"},
-        "rois": {"type": "array", "items": {"$ref": "#/$defs/JointROI"}},
-        "measurements": {"type": "array", "items": {"$ref": "#/$defs/Measurement"}},
-        "condition_findings": {"type": "array", "items": {"$ref": "#/$defs/ConditionFinding"}},
-        "rule_verdicts": {"type": "array", "items": {"$ref": "#/$defs/RuleVerdict"}},
-        "gate": {"type": "object", "additionalProperties": false, "required": ["checks_run", "checks_passed", "rejected_claims", "abstentions", "determinism_hash"], "properties": {"checks_run": {"type": "integer"}, "checks_passed": {"type": "integer"}, "rejected_claims": {"type": "array", "items": {"type": "object", "required": ["claim", "reason"], "properties": {"claim": {"type": "string"}, "reason": {"enum": ["no_rule_for_condition", "rule_unreviewed", "measurement_absent", "measurement_null", "confidence_below_floor", "model_introduced_a_number", "condition_code_out_of_vocabulary", "citation_missing", "modality_mismatch"]}, "roi_id": {"type": ["string", "null"]}}}}, "abstentions": {"type": "array", "items": {"$ref": "#/$defs/Abstention"}}, "determinism_hash": {"type": "string", "description": "sha256 of the canonicalised rule_verdicts list. Same image + same class MUST produce the same hash across runs — asserted in tests/test_gate.py."}, "llm_calls_in_gate": {"type": "integer", "const": 0}}},
-        "summary": {"type": "object", "required": ["total_joints", "accept", "process_indicator", "reject", "undetermined"], "properties": {"total_joints": {"type": "integer"}, "accept": {"type": "integer"}, "process_indicator": {"type": "integer"}, "reject": {"type": "integer"}, "undetermined": {"type": "integer"}, "reject_rate": {"type": "number"}, "class_independent_rejects": {"type": "integer"}}},
-        "artifact": {"type": ["object", "null"], "additionalProperties": false, "properties": {"sha256": {"type": "string"}, "bytes": {"type": "integer"}, "sandbox_image_uuid": {"type": "string"}, "sandbox_operation_id": {"type": "string"}, "generated_in_sandbox": {"type": "boolean", "const": true}, "network_disabled_during_validation": {"type": "boolean", "const": true}, "validation_report": {"type": "object"}, "local_path": {"type": "string"}}},
-        "cost": {"type": "object", "required": ["total_usd", "by_model"], "properties": {"total_usd": {"type": "number"}, "by_model": {"type": "object", "additionalProperties": {"type": "number"}}, "text_tokens": {"type": "integer"}, "image_tokens": {"type": "integer", "description": "Reported SEPARATELY from text tokens. Nobody in this field does this and image tokens dominate cost."}, "cached_tokens": {"type": "integer"}, "cached_token_savings_usd": {"type": "number"}}},
-        "timings_ms": {"type": "object", "additionalProperties": {"type": "integer"}, "description": "Must include cv_local_ms (the non-LLM time) so the UI can show that regrading is instant because S5–S6 are pure Python."},
-        "generated_at": {"type": "string", "format": "date-time"},
-        "rules_table_version_hash": {"type": "string"},
-        "degraded_mode": {"type": "boolean", "default": false},
-        "disclaimer": {"type": "string", "description": "Must equal the short disclaimer from data/rules/workmanship-rules.json"}
+        "report_id": {
+          "type": "string",
+          "pattern": "^rep_"
+        },
+        "board_id": {
+          "type": "string"
+        },
+        "class": {
+          "enum": [
+            1,
+            2,
+            3
+          ]
+        },
+        "image_context": {
+          "$ref": "#/$defs/ImageContext"
+        },
+        "rois": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/JointROI"
+          }
+        },
+        "measurements": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Measurement"
+          }
+        },
+        "condition_findings": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ConditionFinding"
+          }
+        },
+        "rule_verdicts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/RuleVerdict"
+          }
+        },
+        "gate": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "checks_run",
+            "checks_passed",
+            "rejected_claims",
+            "abstentions",
+            "determinism_hash"
+          ],
+          "properties": {
+            "checks_run": {
+              "type": "integer"
+            },
+            "checks_passed": {
+              "type": "integer"
+            },
+            "rejected_claims": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "claim",
+                  "reason"
+                ],
+                "properties": {
+                  "claim": {
+                    "type": "string"
+                  },
+                  "reason": {
+                    "enum": [
+                      "no_rule_for_condition",
+                      "rule_unreviewed",
+                      "measurement_absent",
+                      "measurement_null",
+                      "confidence_below_floor",
+                      "model_introduced_a_number",
+                      "condition_code_out_of_vocabulary",
+                      "citation_missing",
+                      "modality_mismatch"
+                    ]
+                  },
+                  "roi_id": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                }
+              }
+            },
+            "abstentions": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/Abstention"
+              }
+            },
+            "determinism_hash": {
+              "type": "string",
+              "description": "sha256 of the canonicalised rule_verdicts list. Same image + same class MUST produce the same hash across runs — asserted in tests/test_gate.py."
+            },
+            "llm_calls_in_gate": {
+              "type": "integer",
+              "const": 0
+            }
+          }
+        },
+        "summary": {
+          "type": "object",
+          "required": [
+            "total_joints",
+            "accept",
+            "process_indicator",
+            "reject",
+            "undetermined"
+          ],
+          "properties": {
+            "total_joints": {
+              "type": "integer"
+            },
+            "accept": {
+              "type": "integer"
+            },
+            "process_indicator": {
+              "type": "integer"
+            },
+            "reject": {
+              "type": "integer"
+            },
+            "undetermined": {
+              "type": "integer"
+            },
+            "reject_rate": {
+              "type": "number"
+            },
+            "class_independent_rejects": {
+              "type": "integer"
+            }
+          }
+        },
+        "artifact": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "sha256": {
+              "type": "string"
+            },
+            "bytes": {
+              "type": "integer"
+            },
+            "sandbox_image_uuid": {
+              "type": "string"
+            },
+            "sandbox_operation_id": {
+              "type": "string"
+            },
+            "generated_in_sandbox": {
+              "type": "boolean",
+              "const": true
+            },
+            "network_disabled_during_validation": {
+              "type": "boolean",
+              "const": true
+            },
+            "validation_report": {
+              "type": "object"
+            },
+            "local_path": {
+              "type": "string"
+            }
+          }
+        },
+        "cost": {
+          "type": "object",
+          "required": [
+            "total_usd",
+            "by_model"
+          ],
+          "properties": {
+            "total_usd": {
+              "type": "number"
+            },
+            "by_model": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "number"
+              }
+            },
+            "text_tokens": {
+              "type": "integer"
+            },
+            "image_tokens": {
+              "type": "integer",
+              "description": "Reported SEPARATELY from text tokens. Nobody in this field does this and image tokens dominate cost."
+            },
+            "cached_tokens": {
+              "type": "integer"
+            },
+            "cached_token_savings_usd": {
+              "type": "number"
+            }
+          }
+        },
+        "timings_ms": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "integer"
+          },
+          "description": "Must include cv_local_ms (the non-LLM time) so the UI can show that regrading is instant because S5–S6 are pure Python."
+        },
+        "generated_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "rules_table_version_hash": {
+          "type": "string"
+        },
+        "degraded_mode": {
+          "type": "boolean",
+          "default": false
+        },
+        "disclaimer": {
+          "type": "string",
+          "description": "Must equal the short disclaimer from data/rules/workmanship-rules.json"
+        }
       }
     },
-
     "EvalReport": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["report_id", "generated_at", "runner", "testset", "labelling", "per_class"],
+      "required": [
+        "report_id",
+        "generated_at",
+        "runner",
+        "testset",
+        "labelling",
+        "per_class"
+      ],
       "properties": {
-        "report_id": {"type": "string"},
-        "generated_at": {"type": "string", "format": "date-time"},
-        "runner": {"enum": ["nebius_serverless_job", "local_process"]},
-        "serverless_job_id": {"type": ["string", "null"]},
-        "testset": {"type": "object", "required": ["n_images", "n_boards", "n_calibrated", "n_bad_quality"], "properties": {"n_images": {"type": "integer"}, "n_boards": {"type": "integer"}, "n_calibrated": {"type": "integer"}, "n_bad_quality": {"type": "integer"}, "sources": {"type": "array", "items": {"type": "string"}}, "licence_summary": {"type": "string"}}},
-        "labelling": {"type": "object", "required": ["labelers", "kappa_condition_code", "kappa_verdict_by_class", "percent_agreement", "n_disagreements", "n_adjudicated"], "properties": {"labelers": {"type": "array", "items": {"type": "object", "required": ["id", "role", "has_production_experience"], "properties": {"id": {"type": "string"}, "role": {"type": "string"}, "has_production_experience": {"type": "boolean"}}}}, "kappa_condition_code": {"type": ["number", "null"]}, "kappa_verdict_by_class": {"type": "object", "properties": {"1": {"type": ["number", "null"]}, "2": {"type": ["number", "null"]}, "3": {"type": ["number", "null"]}}}, "percent_agreement": {"type": "number"}, "n_disagreements": {"type": "integer"}, "n_adjudicated": {"type": "integer"}, "ambiguity_breakdown": {"type": "object", "properties": {"visual_ambiguity": {"type": "integer"}, "class_boundary_ambiguity": {"type": "integer"}, "standard_ambiguity": {"type": "integer"}, "insufficient_image_quality": {"type": "integer"}}}}},
-        "per_class": {"type": "object", "properties": {"1": {"$ref": "#/$defs/ClassMetrics"}, "2": {"$ref": "#/$defs/ClassMetrics"}, "3": {"$ref": "#/$defs/ClassMetrics"}}},
-        "per_condition_code": {"type": "array", "items": {"type": "object", "required": ["condition_code", "n_examples"], "properties": {"condition_code": {"type": "string"}, "n_examples": {"type": "integer"}, "insufficient": {"type": "boolean", "description": "True when n_examples < 5. When true, precision/recall/f1 MUST be null — publishing an accuracy on n=2 destroys credibility."}, "precision": {"type": ["number", "null"]}, "recall": {"type": ["number", "null"]}, "f1": {"type": ["number", "null"]}}}},
-        "abstention": {"type": "object", "properties": {"rate": {"type": "number"}, "appropriateness": {"type": "number", "description": "Fraction of abstentions on images humans also labelled unusable or UNDETERMINED. A high value proves the system abstains for the RIGHT reasons."}, "by_reason": {"type": "object"}}},
-        "calibration_error": {"type": "object", "properties": {"mean_rel_error": {"type": "number"}, "p95_rel_error": {"type": "number"}, "within_3pct_fraction": {"type": "number"}}},
-        "cost": {"type": "object", "properties": {"total_usd": {"type": "number"}, "usd_per_board": {"type": "number"}, "text_tokens": {"type": "integer"}, "image_tokens": {"type": "integer"}, "by_model": {"type": "object"}, "all_ultra_counterfactual_usd": {"type": "number"}, "ultra_invocation_rate": {"type": "number"}}},
-        "latency_ms": {"type": "object", "properties": {"p50": {"type": "number"}, "p95": {"type": "number"}, "cv_local_p50": {"type": "number"}, "regrade_p50": {"type": "number", "description": "Must be <200ms — this is the class-slider interaction."}}}
+        "report_id": {
+          "type": "string"
+        },
+        "generated_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "runner": {
+          "enum": [
+            "nebius_serverless_job",
+            "local_process"
+          ]
+        },
+        "serverless_job_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "testset": {
+          "type": "object",
+          "required": [
+            "n_images",
+            "n_boards",
+            "n_calibrated",
+            "n_bad_quality"
+          ],
+          "properties": {
+            "n_images": {
+              "type": "integer"
+            },
+            "n_boards": {
+              "type": "integer"
+            },
+            "n_calibrated": {
+              "type": "integer"
+            },
+            "n_bad_quality": {
+              "type": "integer"
+            },
+            "sources": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "licence_summary": {
+              "type": "string"
+            }
+          }
+        },
+        "labelling": {
+          "type": "object",
+          "required": [
+            "labelers",
+            "kappa_condition_code",
+            "kappa_verdict_by_class",
+            "percent_agreement",
+            "n_disagreements",
+            "n_adjudicated"
+          ],
+          "properties": {
+            "labelers": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "id",
+                  "role",
+                  "has_production_experience"
+                ],
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "role": {
+                    "type": "string"
+                  },
+                  "has_production_experience": {
+                    "type": "boolean"
+                  }
+                }
+              }
+            },
+            "kappa_condition_code": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "kappa_verdict_by_class": {
+              "type": "object",
+              "properties": {
+                "1": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "2": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "3": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                }
+              }
+            },
+            "percent_agreement": {
+              "type": "number"
+            },
+            "n_disagreements": {
+              "type": "integer"
+            },
+            "n_adjudicated": {
+              "type": "integer"
+            },
+            "ambiguity_breakdown": {
+              "type": "object",
+              "properties": {
+                "visual_ambiguity": {
+                  "type": "integer"
+                },
+                "class_boundary_ambiguity": {
+                  "type": "integer"
+                },
+                "standard_ambiguity": {
+                  "type": "integer"
+                },
+                "insufficient_image_quality": {
+                  "type": "integer"
+                }
+              }
+            }
+          }
+        },
+        "per_class": {
+          "type": "object",
+          "properties": {
+            "1": {
+              "$ref": "#/$defs/ClassMetrics"
+            },
+            "2": {
+              "$ref": "#/$defs/ClassMetrics"
+            },
+            "3": {
+              "$ref": "#/$defs/ClassMetrics"
+            }
+          }
+        },
+        "per_condition_code": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "condition_code",
+              "n_examples"
+            ],
+            "properties": {
+              "condition_code": {
+                "type": "string"
+              },
+              "n_examples": {
+                "type": "integer"
+              },
+              "insufficient": {
+                "type": "boolean",
+                "description": "True when n_examples < 5. When true, precision/recall/f1 MUST be null — publishing an accuracy on n=2 destroys credibility."
+              },
+              "precision": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "recall": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "f1": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              }
+            }
+          }
+        },
+        "abstention": {
+          "type": "object",
+          "properties": {
+            "rate": {
+              "type": "number"
+            },
+            "appropriateness": {
+              "type": "number",
+              "description": "Fraction of abstentions on images humans also labelled unusable or UNDETERMINED. A high value proves the system abstains for the RIGHT reasons."
+            },
+            "by_reason": {
+              "type": "object"
+            }
+          }
+        },
+        "calibration_error": {
+          "type": "object",
+          "properties": {
+            "mean_rel_error": {
+              "type": "number"
+            },
+            "p95_rel_error": {
+              "type": "number"
+            },
+            "within_3pct_fraction": {
+              "type": "number"
+            }
+          }
+        },
+        "cost": {
+          "type": "object",
+          "properties": {
+            "total_usd": {
+              "type": "number"
+            },
+            "usd_per_board": {
+              "type": "number"
+            },
+            "text_tokens": {
+              "type": "integer"
+            },
+            "image_tokens": {
+              "type": "integer"
+            },
+            "by_model": {
+              "type": "object"
+            },
+            "all_ultra_counterfactual_usd": {
+              "type": "number"
+            },
+            "ultra_invocation_rate": {
+              "type": "number"
+            }
+          }
+        },
+        "latency_ms": {
+          "type": "object",
+          "properties": {
+            "p50": {
+              "type": "number"
+            },
+            "p95": {
+              "type": "number"
+            },
+            "cv_local_p50": {
+              "type": "number"
+            },
+            "regrade_p50": {
+              "type": "number",
+              "description": "Must be <200ms — this is the class-slider interaction."
+            }
+          }
+        }
       }
     },
-
     "ClassMetrics": {
       "type": "object",
-      "required": ["n", "confusion_matrix"],
+      "required": [
+        "n",
+        "confusion_matrix"
+      ],
       "properties": {
-        "n": {"type": "integer"},
-        "confusion_matrix": {"type": "object", "description": "4x4 over ACCEPT / PROCESS_INDICATOR / REJECT / UNDETERMINED, predicted vs labelled"},
-        "reject_precision": {"type": ["number", "null"]},
-        "reject_recall": {"type": ["number", "null"]},
-        "reject_f1": {"type": ["number", "null"]},
-        "false_accept_rate": {"type": ["number", "null"], "description": "Labelled REJECT graded ACCEPT. THE headline number at Class 3."},
-        "false_reject_rate": {"type": ["number", "null"]},
-        "undetermined_rate": {"type": ["number", "null"]}
+        "n": {
+          "type": "integer"
+        },
+        "confusion_matrix": {
+          "type": "object",
+          "description": "4x4 over ACCEPT / PROCESS_INDICATOR / REJECT / UNDETERMINED, predicted vs labelled"
+        },
+        "reject_precision": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "reject_recall": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "reject_f1": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "false_accept_rate": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "description": "Labelled REJECT graded ACCEPT. THE headline number at Class 3."
+        },
+        "false_reject_rate": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "undetermined_rate": {
+          "type": [
+            "number",
+            "null"
+          ]
+        }
       }
     },
-
-    "LedgerLine": {"$ref": "../A-redflag-eu-product-safety/schemas/core-schemas.json#/$defs/LedgerLine"}
+    "LedgerLine": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "ts",
+        "kind",
+        "stage",
+        "model",
+        "request",
+        "cost_usd",
+        "latency_ms",
+        "status",
+        "notes"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "ts": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "kind": {
+          "type": "string",
+          "minLength": 1
+        },
+        "stage": {
+          "type": "string",
+          "minLength": 1
+        },
+        "model": {
+          "type": "string",
+          "minLength": 1
+        },
+        "request": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "prompt_tokens",
+            "completion_tokens",
+            "cached_tokens"
+          ],
+          "properties": {
+            "prompt_tokens": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "completion_tokens": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "cached_tokens": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        },
+        "cost_usd": {
+          "type": "number",
+          "minimum": 0
+        },
+        "latency_ms": {
+          "type": "number",
+          "minimum": 0
+        },
+        "status": {
+          "type": "string",
+          "minLength": 1
+        },
+        "notes": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    }
   },
-
   "types": {
-    "ImageContext": {"$ref": "#/$defs/ImageContext"},
-    "JointROI": {"$ref": "#/$defs/JointROI"},
-    "Measurement": {"$ref": "#/$defs/Measurement"},
-    "ConditionFinding": {"$ref": "#/$defs/ConditionFinding"},
-    "RuleVerdict": {"$ref": "#/$defs/RuleVerdict"},
-    "Abstention": {"$ref": "#/$defs/Abstention"},
-    "BoardReport": {"$ref": "#/$defs/BoardReport"},
-    "EvalReport": {"$ref": "#/$defs/EvalReport"}
+    "ImageContext": {
+      "$ref": "#/$defs/ImageContext"
+    },
+    "JointROI": {
+      "$ref": "#/$defs/JointROI"
+    },
+    "Measurement": {
+      "$ref": "#/$defs/Measurement"
+    },
+    "ConditionFinding": {
+      "$ref": "#/$defs/ConditionFinding"
+    },
+    "RuleVerdict": {
+      "$ref": "#/$defs/RuleVerdict"
+    },
+    "Abstention": {
+      "$ref": "#/$defs/Abstention"
+    },
+    "BoardReport": {
+      "$ref": "#/$defs/BoardReport"
+    },
+    "EvalReport": {
+      "$ref": "#/$defs/EvalReport"
+    }
   }
 }
