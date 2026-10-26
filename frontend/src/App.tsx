@@ -8,10 +8,33 @@ type ApiInfo = {
   model_assistance_configured: boolean;
 };
 
+type GeometryMeasurement = {
+  quantity: string;
+  value: number | null;
+  unit: string | null;
+  computable: boolean;
+  not_computable_reason?: string | null;
+};
+
+type RegionVerdict = {
+  verdict: 'ACCEPT' | 'REJECT' | 'PROCESS_INDICATOR' | 'UNDETERMINED';
+  rule_id?: string;
+  reason?: string;
+  quantity?: string;
+};
+
 type Region = {
   region_id: string;
   bbox_px: { x: number; y: number; width: number; height: number };
   features: Record<string, number>;
+  measurements?: GeometryMeasurement[];
+  geometry_diagnostics?: Array<{
+    name: string;
+    curvature_px_inv: number | null;
+    computable: boolean;
+    not_computable_reason?: string | null;
+  }>;
+  rule_verdicts?: RegionVerdict[];
   interpretation: string;
 };
 
@@ -43,6 +66,12 @@ type Inspection = {
 
 type Connection = 'checking' | 'online' | 'offline';
 const MAX_FILE_BYTES = 10 * 1024 * 1024;
+
+function verdictColor(verdict: string): string {
+  if (verdict === 'ACCEPT') return 'var(--color-pass)';
+  if (verdict === 'REJECT') return 'var(--color-defect)';
+  return 'var(--color-text-muted)';
+}
 
 export default function App() {
   const [connection, setConnection] = useState<Connection>('checking');
@@ -111,8 +140,7 @@ export default function App() {
     setFile(selected);
   }
 
-  async function submitInspection(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  async function runInspection(selectedClass: number) {
     if (!file) {
       setError('Choose a photo before starting analysis.');
       return;
@@ -125,7 +153,7 @@ export default function App() {
     setInspection(null);
     try {
       const params = new URLSearchParams({
-        product_class: String(productClass),
+        product_class: String(selectedClass),
         model_assist: String(modelAssist),
       });
       const response = await fetch(`/v1/inspect?${params}`, {
@@ -146,6 +174,17 @@ export default function App() {
         setBusy(false);
       }
     }
+  }
+
+  function submitInspection(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    void runInspection(productClass);
+  }
+
+  function changeProductClass(value: string) {
+    const nextClass = Number(value);
+    setProductClass(nextClass);
+    if (inspection && file) void runInspection(nextClass);
   }
 
   return (
@@ -215,7 +254,7 @@ export default function App() {
           />
           <div className="form-row">
             <label className="select-label" htmlFor="product-class">Reference class</label>
-            <select id="product-class" value={productClass} onChange={(event) => setProductClass(Number(event.target.value))}>
+            <select id="product-class" value={productClass} onChange={(event) => changeProductClass(event.target.value)}>
               <option value={1}>Class 1</option>
               <option value={2}>Class 2</option>
               <option value={3}>Class 3</option>
@@ -254,7 +293,13 @@ export default function App() {
               <p className="eyebrow">02 / EXPERIMENTAL ANALYSIS</p>
               <h2 id="results-title">Inspection evidence</h2>
             </div>
-            <span className="verdict-badge">UNDETERMINED</span>
+            <span
+              className="verdict-badge"
+              role="status"
+              style={{ color: verdictColor(inspection.grading.verdict), borderColor: verdictColor(inspection.grading.verdict) }}
+            >
+              {inspection.grading.verdict}
+            </span>
           </div>
           <div className="result-grid">
             <div className="result-panel image-panel">
@@ -278,15 +323,22 @@ export default function App() {
             {inspection.candidate_regions.length === 0
               ? <p className="muted">No contour candidates passed the experimental size filters.</p>
               : <div className="table-wrap"><table>
-                <thead><tr><th>Region</th><th>Box (px)</th><th>Contour area</th><th>Interpretation</th></tr></thead>
-                <tbody>{inspection.candidate_regions.map((region) => (
-                  <tr key={region.region_id}>
-                    <td><code>{region.region_id}</code></td>
-                    <td>{region.bbox_px.x}, {region.bbox_px.y} · {region.bbox_px.width}×{region.bbox_px.height}</td>
-                    <td>{region.features.contour_area_px.toFixed(0)} px²</td>
-                    <td>{region.interpretation.replaceAll('_', ' ')}</td>
-                  </tr>
-                ))}</tbody>
+                <thead><tr><th>Region / box (px)</th><th>Contour area</th><th>Wetting angle</th><th>Fillet concavity (px⁻¹)</th><th>Wetting rule</th></tr></thead>
+                <tbody>{inspection.candidate_regions.map((region) => {
+                  const angle = region.measurements?.find((item) => item.quantity === 'wetting_angle_deg');
+                  const concavity = region.geometry_diagnostics?.find((item) => item.name === 'fillet_concavity');
+                  const wettingVerdict = region.rule_verdicts?.find((item) => item.rule_id === 'JC-WET-001');
+                  const rowVerdict = wettingVerdict?.verdict ?? 'UNDETERMINED';
+                  return (
+                    <tr key={region.region_id}>
+                      <td><code>{region.region_id}</code><br />{region.bbox_px.x}, {region.bbox_px.y} · {region.bbox_px.width}×{region.bbox_px.height}</td>
+                      <td>{region.features.contour_area_px.toFixed(0)} px²</td>
+                      <td>{angle?.computable && angle.value !== null ? `${angle.value.toFixed(0)}°` : 'UNDETERMINED'}{angle?.not_computable_reason && <small>{angle.not_computable_reason.replaceAll('_', ' ')}</small>}</td>
+                      <td>{concavity?.computable && concavity.curvature_px_inv !== null ? `${concavity.curvature_px_inv.toPrecision(3)} px⁻¹` : 'UNDETERMINED'}{concavity?.not_computable_reason && <small>{concavity.not_computable_reason.replaceAll('_', ' ')}</small>}</td>
+                      <td><span className="verdict-badge" style={{ color: verdictColor(rowVerdict), borderColor: verdictColor(rowVerdict) }}>{rowVerdict}</span></td>
+                    </tr>
+                  );
+                })}</tbody>
               </table></div>}
           </div>
 
@@ -307,6 +359,15 @@ export default function App() {
             <h3>Why the result abstains</h3>
             <ul>{inspection.grading.reason_codes.map((reason) => <li key={reason}>{reason.replaceAll('_', ' ')}</li>)}</ul>
             <p>{inspection.disclaimer}</p>
+            <button
+              className="secondary-button"
+              type="button"
+              disabled
+              title="A verified report endpoint and network-disabled Sandbox validation are not available."
+            >
+              Download Verified Inspection Pack
+            </button>
+            <p className="muted">Unavailable until calibrated rules, trusted measurements, and Sandbox validation are implemented.</p>
           </div>
         </section>
       )}
