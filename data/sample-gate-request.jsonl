@@ -1,0 +1,1 @@
+{"rule_id":"JC-WET-001","assertion":{"class":3,"calibrated":true,"measurement":{"quantity":"solder_coverage_pct","value":82.0,"computable":true,"roi_id":"j_sample_001","derivation":"Synthetic example only; not a measured board image.","pixel_evidence":{"mask_sha256":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}}}}

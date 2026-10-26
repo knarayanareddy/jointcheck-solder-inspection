@@ -1,1 +1,1 @@
-"""App root package."""\n
+"""JointCheck backend application package."""

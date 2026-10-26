@@ -1,0 +1,39 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install Python dependencies
+        run: uv sync --project backend --extra dev --locked
+      - name: Lint Python
+        run: cd backend && uv run --locked --extra dev ruff check app tests ../jobs
+      - name: Test backend and contracts
+        run: cd backend && uv run --locked --extra dev pytest -v
+      - name: Build frontend
+        run: |
+          cd frontend
+          npm ci
+          npm run build
+      - name: Verify compileability and offline gate sample
+        run: |
+          python -m compileall -q backend/app backend/tests jobs
+          python jobs/run_gate_batch.py data/sample-gate-request.jsonl
