@@ -1,0 +1,21 @@
+/* JointCheck Design System — High-Contrast Industrial Dark */
+:root {
+  --color-bg-primary: #0B1215;
+  --color-bg-secondary: #131F24;
+  --color-bg-card: #1A2930;
+  --color-text-primary: #F1F5F9;
+  --color-text-secondary: #94A3B8;
+  --color-text-muted: #475569;
+  --color-border: #243B44;
+
+  /* Optical Inspection Accents */
+  --color-defect: #FF1744;      /* Defect Red */
+  --color-warning: #FFD600;     /* Borderline / Notice Gold */
+  --color-pass: #00E676;        /* Accept Green */
+  --color-cyan: #00E5FF;        /* ROI / Bounding Box Cyan */
+  --color-nvidia: #76B900;      /* NVIDIA Green */
+
+  --font-display: 'Space Grotesk', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+  --font-body: 'Inter', system-ui, sans-serif;
+}

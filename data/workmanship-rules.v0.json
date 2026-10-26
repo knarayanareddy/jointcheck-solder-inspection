@@ -1,0 +1,339 @@
+{
+  "_meta": {
+    "schema_version": "0.1.0",
+    "project": "JointCheck — workmanship grading with a deterministic rule lookup",
+    "generated": "2026-10-26",
+    "status": "SEED — thresholds are PROVISIONAL and MUST be calibrated in ticket B-T24",
+    "integrity_warnings": [
+      "IPC-A-610 and J-STD-001 are TRADEMARKED standards owned by IPC / IPC-WHMA. Their text and official accept/reject photographs are paid material.",
+      "DO NOT reproduce substantial verbatim text from them. DO NOT use their official photographs. DO NOT imply endorsement or certification.",
+      "DO NOT invent clause numbers. Every rule_id here is our own (JC-*). A rule may only carry an external clause reference if a human with legal access to the standard has verified it, and then verified_against_primary_source must be true with their name and the edition.",
+      "The class_thresholds below are PROVISIONAL PLACEHOLDERS set to plausible round numbers so the pipeline can be built. They are NOT sourced values. Ticket B-T24 calibrates each one against the double-labelled test set and records before/after in docs/DECISIONS.md.",
+      "Any rule with human_reviewed=false is EXCLUDED from the gate when STRICT_MODE is on, and its exclusion is recorded. Do not ship a gate built on unreviewed numbers without saying so.",
+      "The required public statement, verbatim, in README + artifact footer + video + Devpost copy: 'An independent tool aligned to publicly documented electronics workmanship criteria. Not affiliated with, endorsed by, or certified against IPC-A-610 or J-STD-001. Thresholds are ours, calibrated on our own labelled test set.'"
+    ],
+    "class_definitions": {
+      "1": "General electronic products — consumer/low-cost items where the primary requirement is that the assembly functions. Cosmetic imperfections are broadly tolerated.",
+      "2": "Dedicated service electronic products — where continued performance and extended life are required, and for which uninterrupt service is desirable but not critical. Cosmetic defects may be allowed.",
+      "3": "High-reliability electronic products — where continued high performance or performance-on-demand is critical, equipment downtime cannot be tolerated, end-use environment may be exceptionally harsh, and the equipment must function when required (medical, life support, aerospace, military).",
+      "source_note": "These three class descriptions are widely reproduced in public electronics-assembly training material and vendor documentation. Confirm the exact wording against an openly licensed source and record it in docs/STANDARDS-POSITION.md before publishing them to users. Do NOT present them as a quotation from the standard unless you have verified that they are."
+    },
+    "verdict_vocabulary": ["ACCEPT", "PROCESS_INDICATOR", "REJECT", "UNDETERMINED"],
+    "verdict_definitions": {
+      "ACCEPT": "Meets the criterion for the selected class.",
+      "PROCESS_INDICATOR": "Not a defect at this class, but a condition that signals a process problem worth correcting. Including this middle grade is deliberate: a binary pass/fail tool reads as naive to anyone who has worked in production.",
+      "REJECT": "Fails the criterion for the selected class.",
+      "UNDETERMINED": "Cannot be decided. The gate abstains and routes to a human inspector with a reason code and a fix instruction."
+    },
+    "rules_table_version_hash": null,
+    "verification_log": []
+  },
+
+  "image_quality_floors": {
+    "blur_laplacian_var_min": 60,
+    "exposure_clipped_pct_max": 8.0,
+    "min_roi_px": 48,
+    "note": "Calibrate blur_laplacian_var_min empirically in B-T05: it must separate the 10 deliberately-bad test images from the good ones with ZERO overlap. Record the two distributions in docs/EVAL.md. 60 is a starting guess, not a sourced value."
+  },
+
+  "confidence_floors": {
+    "visual_only_condition_min": 0.70,
+    "nano_confidence_min_before_ultra_escalation": 0.60,
+    "near_threshold_band_pct": 15,
+    "note": "A condition with measurement_basis='visual_only' and confidence below the floor becomes UNDETERMINED, never a verdict."
+  },
+
+  "rules": [
+    {
+      "rule_id": "JC-WET-001",
+      "condition_code": "INSUFFICIENT_WETTING",
+      "applies_to_joint_types": ["smd_gull_wing", "through_hole", "hand_pad", "j_lead"],
+      "title": "Solder must wet the pad and the lead, forming a concave fillet with visible flow",
+      "plain_english": "The solder has to actually spread onto the metal, not just sit on it as a bead. A dull, rounded blob that pulls away from the pad is a cold or non-wetted joint.",
+      "class_thresholds": {
+        "1": {"metric": "solder_coverage_pct", "op": ">=", "value": 50, "verdict_if_met": "ACCEPT"},
+        "2": {"metric": "solder_coverage_pct", "op": ">=", "value": 65, "verdict_if_met": "ACCEPT"},
+        "3": {"metric": "solder_coverage_pct", "op": ">=", "value": 75, "verdict_if_met": "ACCEPT"}
+      },
+      "verdict_if_not_met": "REJECT",
+      "secondary_verdict": {"when": "coverage is within 10 points of the class threshold and the surface is dull", "verdict": "PROCESS_INDICATOR", "note": "borderline wetting usually indicates a temperature or fluxing process problem"},
+      "requires_calibration": true,
+      "measurement_quantities": ["solder_coverage_pct", "wetting_angle_deg"],
+      "image_quality_floor": "inherit",
+      "source": {"kind": "own_validated_measurement", "reference": "Provisional threshold. To be calibrated in B-T24 against the double-labelled test set at a Class-3 precision floor of 0.90.", "url": null, "retrieved_at": null, "verbatim_quote_if_openly_licensed": null, "verified_against_primary_source": false, "verified_by": null, "verified_edition": null},
+      "threshold_provenance": "PROVISIONAL — set by us as a plausible starting value. Not a sourced number.",
+      "human_reviewed": false
+    },
+    {
+      "rule_id": "JC-VOL-001",
+      "condition_code": "INSUFFICIENT_SOLDER_VOLUME",
+      "applies_to_joint_types": ["smd_gull_wing", "smd_rectangular", "through_hole"],
+      "title": "The joint must contain enough solder to form a continuous fillet between lead and land",
+      "plain_english": "Not enough solder. The fillet is thin or missing over part of the joint, so the mechanical and electrical connection is weak.",
+      "class_thresholds": {
+        "1": {"metric": "solder_volume_ratio", "op": ">=", "value": 0.50, "verdict_if_met": "ACCEPT"},
+        "2": {"metric": "solder_volume_ratio", "op": ">=", "value": 0.65, "verdict_if_met": "ACCEPT"},
+        "3": {"metric": "solder_volume_ratio", "op": ">=", "value": 0.75, "verdict_if_met": "ACCEPT"}
+      },
+      "verdict_if_not_met": "REJECT",
+      "requires_calibration": true,
+      "measurement_quantities": ["solder_volume_ratio", "fillet_area_mm2"],
+      "source": {"kind": "own_validated_measurement", "reference": "Provisional. Calibrate in B-T24.", "verified_against_primary_source": false},
+      "threshold_provenance": "PROVISIONAL — set by us.",
+      "human_reviewed": false
+    },
+    {
+      "rule_id": "JC-EXC-001",
+      "condition_code": "EXCESS_SOLDER",
+      "applies_to_joint_types": ["smd_gull_wing", "smd_rectangular", "through_hole", "hand_pad"],
+      "title": "Excess solder that obscures the joint outline, or that forms a convex blob, is not acceptable at higher classes",
+      "plain_english": "Too much solder. You should still be able to see the shape of the joint underneath. A shiny ball that hides the lead is a classic over-application.",
+      "class_thresholds": {
+        "1": {"metric": "solder_volume_ratio", "op": "<=", "value": 2.50, "verdict_if_met": "ACCEPT"},
+        "2": {"metric": "solder_volume_ratio", "op": "<=", "value": 2.00, "verdict_if_met": "ACCEPT"},
+        "3": {"metric": "solder_volume_ratio", "op": "<=", "value": 1.60, "verdict_if_met": "ACCEPT"}
+      },
+      "verdict_if_not_met": "REJECT",
+      "secondary_verdict": {"when": "joint outline not visible but no bridging or clearance risk", "verdict": "PROCESS_INDICATOR", "note": "excess solder is more often a process signal than a reliability defect at Class 1–2"},
+      "requires_calibration": true,
+      "measurement_quantities": ["solder_volume_ratio", "joint_height_mm"],
+      "source": {"kind": "own_validated_measurement", "reference": "Provisional. Calibrate in B-T24.", "verified_against_primary_source": false},
+      "threshold_provenance": "PROVISIONAL — set by us.",
+      "human_reviewed": false
+    },
+    {
+      "rule_id": "JC-BRD-001",
+      "condition_code": "SOLDER_BRIDGE",
+      "applies_to_joint_types": ["smd_gull_wing", "smd_rectangular", "connector_pin", "through_hole", "hand_pad"],
+      "title": "No solder may connect two electrically separate conductors",
+      "plain_english": "Solder has bridged across to a neighbouring pad or pin. This is a short circuit.",
+      "class_thresholds": {
+        "1": {"metric": "bridge_gap_mm", "op": ">", "value": 0.0, "verdict_if_met": "ACCEPT"},
+        "2": {"metric": "bridge_gap_mm", "op": ">", "value": 0.0, "verdict_if_met": "ACCEPT"},
+        "3": {"metric": "bridge_gap_mm", "op": ">", "value": 0.10, "verdict_if_met": "ACCEPT"}
+      },
+      "verdict_if_not_met": "REJECT",
+      "requires_calibration": true,
+      "measurement_quantities": ["bridge_gap_mm"],
+      "class_sensitivity_note": "Bridge detection is largely class-INDEPENDENT — a short is a short. The Class-3 minimum clearance of 0.10 mm is a provisional margin, not a sourced value. This is worth saying on camera: some criteria are class-sensitive and some are not, and knowing which is which is the domain knowledge.",
+      "source": {"kind": "own_validated_measurement", "reference": "Provisional. Calibrate in B-T24.", "verified_against_primary_source": false},
+      "threshold_provenance": "PROVISIONAL — set by us.",
+      "human_reviewed": false
+    },
+    {
+      "rule_id": "JC-ICL-001",
+      "condition_code": "ICICLE",
+      "applies_to_joint_types": ["through_hole", "hand_pad", "wire_terminal"],
+      "title": "Icicles (solder spikes projecting from the joint) are limited by length and by clearance risk",
+      "plain_english": "A sharp spike of solder sticking out. It can break off, become debris, or short against something nearby.",
+      "class_thresholds": {
+        "1": {"metric": "icicle_length_mm", "op": "<=", "value": 1.50, "verdict_if_met": "ACCEPT"},
+        "2": {"metric": "icicle_length_mm", "op": "<=", "value": 1.00, "verdict_if_met": "ACCEPT"},
+        "3": {"metric": "icicle_length_mm", "op": "<=", "value": 0.50, "verdict_if_met": "ACCEPT"}
+      },
+      "verdict_if_not_met": "REJECT",
+      "requires_calibration": true,
+      "measurement_quantities": ["icicle_length_mm", "insulation_clearance_mm"],
+      "source": {"kind": "own_validated_measurement", "reference": "Provisional. Calibrate in B-T24.", "verified_against_primary_source": false},
+      "threshold_provenance": "PROVISIONAL — set by us.",
+      "human_reviewed": false
+    },
+    {
+      "rule_id": "JC-BAL-001",
+      "condition_code": "SOLDER_BALL_SPLASH",
+      "applies_to_joint_types": ["smd_gull_wing", "smd_rectangular", "through_hole", "hand_pad"],
+      "title": "Detached solder balls/splash must be removed; size and proximity to conductors decide the class verdict",
+      "plain_english": "Loose blobs of solder left on the board. They can move and cause a short later.",
+      "class_thresholds": {
+        "1": {"metric": "solder_ball_diameter_mm", "op": "<=", "value": 0.50, "verdict_if_met": "ACCEPT"},
+        "2": {"metric": "solder_ball_diameter_mm", "op": "<=", "value": 0.25, "verdict_if_met": "ACCEPT"},
+        "3": {"metric": "solder_ball_diameter_mm", "op": "<=", "value": 0.00, "verdict_if_met": "ACCEPT"}
+      },
+      "verdict_if_not_met": "REJECT",
+      "secondary_verdict": {"when": "ball is within the size limit but lies within 0.5 mm of an exposed conductor", "verdict": "PROCESS_INDICATOR"},
+      "requires_calibration": true,
+      "measurement_quantities": ["solder_ball_diameter_mm", "insulation_clearance_mm"],
+      "source": {"kind": "own_validated_measurement", "reference": "Provisional. Calibrate in B-T24.", "verified_against_primary_source": false},
+      "threshold_provenance": "PROVISIONAL — set by us. Class 3 = zero tolerance is a deliberate conservative choice, not a sourced value.",
+      "human_reviewed": false
+    },
+    {
+      "rule_id": "JC-TMB-001",
+      "condition_code": "TOMBSTONING",
+      "applies_to_joint_types": ["smd_rectangular"],
+      "title": "A two-terminal chip component must sit flat on both terminations; lifted-end angle decides the verdict",
+      "plain_english": "One end of the component has stood up like a tombstone. That end is not soldered at all.",
+      "class_thresholds": {
+        "1": {"metric": "tombstone_lift_deg", "op": "<=", "value": 15.0, "verdict_if_met": "ACCEPT"},
+        "2": {"metric": "tombstone_lift_deg", "op": "<=", "value": 5.0, "verdict_if_met": "ACCEPT"},
+        "3": {"metric": "tombstone_lift_deg", "op": "<=", "value": 0.0, "verdict_if_met": "ACCEPT"}
+      },
+      "verdict_if_not_met": "REJECT",
+      "requires_calibration": true,
+      "measurement_quantities": ["tombstone_lift_deg"],
+      "measurement_caveat": "tombstone_lift_deg requires the component body contour to be visible against the board. When it is not, S3 MUST return value=null with reason 'component_contour_not_resolvable' and the gate MUST abstain with 'measurement_not_computable'. Never estimate an angle from a single 2D view without the body contour — that is exactly the 'hallucination with a decimal point' failure this project exists to avoid.",
+      "source": {"kind": "own_validated_measurement", "reference": "Provisional. Calibrate in B-T24.", "verified_against_primary_source": false},
+      "threshold_provenance": "PROVISIONAL — set by us.",
+      "human_reviewed": false
+    },
+    {
+      "rule_id": "JC-CLR-001",
+      "condition_code": "INSULATION_CLEARANCE_VIOLATION",
+      "applies_to_joint_types": ["through_hole", "wire_terminal", "connector_pin", "hand_pad"],
+      "title": "Solder and wire strands must maintain clearance from the board surface and from adjacent conductors",
+      "plain_english": "Solder or a stray wire strand is too close to the board or to the next pad. It can arc or short.",
+      "class_thresholds": {
+        "1": {"metric": "insulation_clearance_mm", "op": ">=", "value": 0.10, "verdict_if_met": "ACCEPT"},
+        "2": {"metric": "insulation_clearance_mm", "op": ">=", "value": 0.20, "verdict_if_met": "ACCEPT"},
+        "3": {"metric": "insulation_clearance_mm", "op": ">=", "value": 0.40, "verdict_if_met": "ACCEPT"}
+      },
+      "verdict_if_not_met": "REJECT",
+      "requires_calibration": true,
+      "measurement_quantities": ["insulation_clearance_mm", "wire_strand_exposure_mm"],
+      "source": {"kind": "own_validated_measurement", "reference": "Provisional. Calibrate in B-T24.", "verified_against_primary_source": false},
+      "threshold_provenance": "PROVISIONAL — set by us.",
+      "human_reviewed": false
+    },
+    {
+      "rule_id": "JC-WIR-001",
+      "condition_code": "WIRE_STRAND_DAMAGE",
+      "applies_to_joint_types": ["wire_terminal"],
+      "title": "Stranded wire must not have severed, splayed or folded strands at the termination",
+      "plain_english": "Some of the little copper wires inside the cable are cut, bent back, or sticking out. The joint is weaker than it looks.",
+      "class_thresholds": {
+        "1": {"metric": "wire_strand_exposure_mm", "op": "<=", "value": 1.00, "verdict_if_met": "ACCEPT"},
+        "2": {"metric": "wire_strand_exposure_mm", "op": "<=", "value": 0.50, "verdict_if_met": "ACCEPT"},
+        "3": {"metric": "wire_strand_exposure_mm", "op": "<=", "value": 0.00, "verdict_if_met": "ACCEPT"}
+      },
+      "verdict_if_not_met": "REJECT",
+      "requires_calibration": true,
+      "measurement_quantities": ["wire_strand_exposure_mm"],
+      "measurement_caveat": "Counting severed strands from a single photo is often not possible. Prefer the visual_only path with an explicit confidence, and abstain below the floor.",
+      "source": {"kind": "own_validated_measurement", "reference": "Provisional. Calibrate in B-T24.", "verified_against_primary_source": false},
+      "threshold_provenance": "PROVISIONAL — set by us.",
+      "human_reviewed": false
+    },
+    {
+      "rule_id": "JC-FLX-001",
+      "condition_code": "FLUX_RESIDUE_EXCESSIVE",
+      "applies_to_joint_types": ["smd_gull_wing", "smd_rectangular", "through_hole", "hand_pad", "wire_terminal"],
+      "title": "Flux residue must not exceed a class-dependent fraction of the local area, and must not bridge conductors",
+      "plain_english": "Leftover flux gunk. Some is normal; a lot of it traps moisture and can be corrosive or conductive.",
+      "class_thresholds": {
+        "1": {"metric": "flux_residue_area_pct", "op": "<=", "value": 40.0, "verdict_if_met": "ACCEPT"},
+        "2": {"metric": "flux_residue_area_pct", "op": "<=", "value": 20.0, "verdict_if_met": "ACCEPT"},
+        "3": {"metric": "flux_residue_area_pct", "op": "<=", "value": 5.0, "verdict_if_met": "ACCEPT"}
+      },
+      "verdict_if_not_met": "REJECT",
+      "secondary_verdict": {"when": "within limit but visibly bridging two conductors", "verdict": "PROCESS_INDICATOR"},
+      "requires_calibration": true,
+      "measurement_quantities": ["flux_residue_area_pct"],
+      "measurement_caveat": "Flux residue detection is colour-space dependent and highly sensitive to white balance and no-clean vs rosin flux type. Record the flux type when known. If unknown, widen the abstention band and say so.",
+      "source": {"kind": "own_validated_measurement", "reference": "Provisional. Calibrate in B-T24.", "verified_against_primary_source": false},
+      "threshold_provenance": "PROVISIONAL — set by us.",
+      "human_reviewed": false
+    },
+    {
+      "rule_id": "JC-VOI-001",
+      "condition_code": "VOIDING_EXCESSIVE",
+      "applies_to_joint_types": ["smd_rectangular", "bga", "hand_pad"],
+      "title": "Void fraction in the solder mass must not exceed a class-dependent limit",
+      "plain_english": "Air bubbles trapped inside the solder. Too many weaken the joint and trap heat.",
+      "class_thresholds": {
+        "1": {"metric": "void_fraction", "op": "<=", "value": 0.35, "verdict_if_met": "ACCEPT"},
+        "2": {"metric": "void_fraction", "op": "<=", "value": 0.25, "verdict_if_met": "ACCEPT"},
+        "3": {"metric": "void_fraction", "op": "<=", "value": 0.10, "verdict_if_met": "ACCEPT"}
+      },
+      "verdict_if_not_met": "REJECT",
+      "requires_calibration": true,
+      "measurement_quantities": ["void_fraction"],
+      "measurement_caveat": "For BGA, voiding is normally assessed by X-ray, NOT by optical inspection. An optical void_fraction for a BGA is almost certainly invalid — the gate MUST abstain with 'measurement_not_computable' for joint_type='bga' unless the user supplies an X-ray image, in which case record the modality. Getting this right is itself an insider signal.",
+      "source": {"kind": "own_validated_measurement", "reference": "Provisional. Calibrate in B-T24.", "verified_against_primary_source": false},
+      "threshold_provenance": "PROVISIONAL — set by us.",
+      "human_reviewed": false
+    },
+    {
+      "rule_id": "JC-DIS-001",
+      "condition_code": "DISTURBED_JOINT",
+      "applies_to_joint_types": ["through_hole", "hand_pad", "wire_terminal"],
+      "title": "A joint disturbed during solidification shows a frosted/granular surface and must be reflowed or replaced",
+      "plain_english": "The joint moved while the solder was cooling, so it has a grainy, frosted look instead of being smooth and shiny. It looks soldered but it is weak.",
+      "class_thresholds": {"1": null, "2": null, "3": null},
+      "verdict_if_not_met": "REJECT",
+      "requires_calibration": false,
+      "measurement_quantities": [],
+      "grading_mode": "visual_only",
+      "visual_only_confidence_floor": 0.80,
+      "class_sensitivity_note": "Deliberately class-INDEPENDENT: a disturbed joint is not acceptable at any class. Another example of knowing which criteria are class-sensitive and which are not.",
+      "source": {"kind": "public_training_material", "reference": "TODO_VERIFY — locate an openly licensed description of disturbed/disturbed-solder joints and record the URL + retrieval date, or set kind='own_validated_measurement'", "url": null, "retrieved_at": null, "verified_against_primary_source": false},
+      "threshold_provenance": "Visual-only; no numeric threshold. Confidence floor is ours.",
+      "human_reviewed": false
+    },
+    {
+      "rule_id": "JC-CMP-001",
+      "condition_code": "COMPONENT_DAMAGE",
+      "applies_to_joint_types": ["smd_rectangular", "smd_gull_wing", "through_hole", "connector_pin"],
+      "title": "The component body must be free of cracks, chips and thermal damage; terminations must be intact",
+      "plain_english": "The part itself is cracked or chipped, or its metal ends are damaged. Nothing about the solder can save it.",
+      "class_thresholds": {"1": null, "2": null, "3": null},
+      "verdict_if_not_met": "REJECT",
+      "requires_calibration": false,
+      "measurement_quantities": [],
+      "grading_mode": "visual_only",
+      "visual_only_confidence_floor": 0.75,
+      "source": {"kind": "public_training_material", "reference": "TODO_VERIFY — record an openly licensed source, or use kind='own_validated_measurement'", "verified_against_primary_source": false},
+      "threshold_provenance": "Visual-only.",
+      "human_reviewed": false
+    },
+    {
+      "rule_id": "JC-LND-001",
+      "condition_code": "LIFTED_LAND",
+      "applies_to_joint_types": ["smd_rectangular", "smd_gull_wing", "hand_pad"],
+      "title": "The copper land must remain bonded to the substrate; any lifting is a reject regardless of class",
+      "plain_english": "The copper pad has peeled up off the board. The joint is hanging on by nothing.",
+      "class_thresholds": {"1": null, "2": null, "3": null},
+      "verdict_if_not_met": "REJECT",
+      "requires_calibration": false,
+      "measurement_quantities": [],
+      "grading_mode": "visual_only",
+      "visual_only_confidence_floor": 0.75,
+      "source": {"kind": "own_validated_measurement", "reference": "Visual-only; class-independent by construction.", "verified_against_primary_source": false},
+      "threshold_provenance": "Visual-only.",
+      "human_reviewed": false
+    },
+    {
+      "rule_id": "JC-POL-001",
+      "condition_code": "POLARITY_MARKING_MISMATCH",
+      "applies_to_joint_types": ["smd_rectangular", "through_hole", "connector_pin"],
+      "title": "Where a component is polarity-sensitive, the marking orientation must match the board marking",
+      "plain_english": "The part is in backwards. Diodes, electrolytic capacitors, ICs and connectors all have a direction.",
+      "class_thresholds": {"1": null, "2": null, "3": null},
+      "verdict_if_not_met": "REJECT",
+      "requires_calibration": false,
+      "measurement_quantities": [],
+      "grading_mode": "visual_only",
+      "visual_only_confidence_floor": 0.85,
+      "applicability_precondition": "Only applies when BOTH a component polarity marking AND a board polarity marking are visible. If either is not visible, abstain — do not guess.",
+      "source": {"kind": "own_validated_measurement", "reference": "Visual-only; class-independent by construction.", "verified_against_primary_source": false},
+      "threshold_provenance": "Visual-only. The precondition (both markings visible) is the important part.",
+      "human_reviewed": false
+    }
+  ],
+
+  "gate_policy": {
+    "strict_mode_excludes_unreviewed_rules": true,
+    "downgrade_verdict_when_rule_unreviewed": "UNDETERMINED",
+    "downgrade_reason_string": "rule_unreviewed:<rule_id>",
+    "class_independent_rules": ["JC-BRD-001", "JC-DIS-001", "JC-LND-001", "JC-POL-001"],
+    "abstention_reasons": ["uncalibrated", "image_quality_insufficient", "measurement_not_computable", "visual_confidence_below_floor", "rule_unreviewed", "no_rule_for_condition", "modality_mismatch_bga_optical"],
+    "determinism_required": true,
+    "no_llm_in_gate": true,
+    "numeric_values_must_originate_in_s3": true,
+    "model_may_not_introduce_a_number": true
+  },
+
+  "disclaimer": {
+    "short": "JointCheck is an independent screening tool aligned to publicly documented electronics workmanship criteria. It is not affiliated with, endorsed by, or certified against IPC-A-610 or J-STD-001. Thresholds are ours, calibrated on our own labelled test set. It is not a certified inspection system and must not be the sole acceptance authority for a product.",
+    "must_appear_in": ["every verdict in the UI", "the generated PDF report footer", "README.md first screen", "the demo video end card", "the Devpost submission description"]
+  }
+}

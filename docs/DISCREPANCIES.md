@@ -1,0 +1,1 @@
+# Discrepancies Log — JointCheck — Solder Joint Workmanship Inspection with Proof\n\nAny discrepancy between external documentation and live API behavior must be recorded here.\n\n| Date | Source | Documented Behavior | Observed Behavior | Resolution |\n|---|---|---|---|---|\n
