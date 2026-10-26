@@ -15,7 +15,13 @@ import cv2
 import numpy as np
 from PIL import Image, UnidentifiedImageError
 
-from app.gate.gate import RULES_PATH
+from app.gate.gate import RULES_PATH, DeterministicGate
+from app.vision.geometry import (
+    measure_bridge_gap_mm,
+    measure_fillet_concavity,
+    measure_solder_coverage_pct,
+    measure_wetting_angle_deg,
+)
 
 MAX_DECODED_PIXELS = 40_000_000
 MAX_CANDIDATES = 50
@@ -44,8 +50,149 @@ def _intersection_over_union(
     return intersection / union if union else 0.0
 
 
-def analyze_image(image_bytes: bytes) -> dict[str, Any]:
-    """Decode an uploaded image and return conservative CV features and proposals."""
+def _geometry_results(
+    region_id: str,
+    crop: np.ndarray,
+    geometry: dict[str, Any],
+    *,
+    product_class: int,
+    calibrated: bool,
+    quality_usable: bool,
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]], dict[str, Any]]:
+    """Measure only from explicitly supplied masks and references for this ROI."""
+    pad_mask = geometry.get("pad_mask")
+    solder_mask = geometry.get("solder_mask")
+    pad_plane = geometry.get("pad_plane")
+    contact_point = geometry.get("contact_point")
+    measurements = [
+        measure_wetting_angle_deg(
+            solder_mask,
+            pad_plane,
+            contact_point,
+            inward_direction=geometry.get("inward_direction", 1),
+            normal_direction=geometry.get("normal_direction", -1),
+        ),
+        measure_solder_coverage_pct(
+            crop,
+            pad_mask,
+            solder_mask=geometry.get("coverage_solder_mask"),
+        ),
+        measure_bridge_gap_mm(
+            solder_mask,
+            geometry.get("pad_mask_a"),
+            geometry.get("pad_mask_b"),
+            mm_per_px=geometry.get("mm_per_px"),
+        ),
+    ]
+    for measurement in measurements:
+        measurement["roi_id"] = region_id
+        measurement["id"] = f"m_{region_id}_{measurement['quantity']}"
+        measurement["mm_per_px_used"] = (
+            geometry.get("mm_per_px")
+            if measurement["quantity"] == "bridge_gap_mm"
+            else None
+        )
+    concavity = measure_fillet_concavity(
+        solder_mask,
+        pad_plane,
+        contact_point,
+        inward_direction=geometry.get("inward_direction", 1),
+        normal_direction=geometry.get("normal_direction", -1),
+    )
+    geometry_diagnostic = {
+        "name": "fillet_concavity",
+        "curvature_px_inv": concavity["value"],
+        "computable": concavity["computable"],
+        "not_computable_reason": concavity["not_computable_reason"],
+        "derivation": concavity["derivation"],
+        "pixel_evidence": concavity["pixel_evidence"],
+        "roi_id": region_id,
+    }
+
+    try:
+        with RULES_PATH.open(encoding="utf-8") as rules_file:
+            rule_entries = json.load(rules_file).get("rules", [])
+    except (OSError, json.JSONDecodeError, TypeError):
+        rule_entries = []
+    verdicts: list[dict[str, Any]] = []
+    for measurement in measurements:
+        matching = [
+            rule
+            for rule in rule_entries
+            if isinstance(rule, dict)
+            and any(
+                isinstance(threshold, dict)
+                and threshold.get("metric") == measurement["quantity"]
+                for threshold in (rule.get("class_thresholds") or {}).values()
+            )
+        ]
+        if not matching:
+            verdicts.append(
+                {
+                    "roi_id": region_id,
+                    "quantity": measurement["quantity"],
+                    "verdict": "UNDETERMINED",
+                    "reason": "no_matching_rule",
+                }
+            )
+            continue
+        for rule in matching:
+            if not quality_usable:
+                verdict = {
+                    "verdict": "UNDETERMINED",
+                    "rule_id": rule["rule_id"],
+                    "reason": "image_quality_failed",
+                }
+            elif not calibrated:
+                verdict = {
+                    "verdict": "UNDETERMINED",
+                    "rule_id": rule["rule_id"],
+                    "reason": "uncalibrated",
+                }
+            elif not measurement["computable"]:
+                verdict = {
+                    "verdict": "UNDETERMINED",
+                    "rule_id": rule["rule_id"],
+                    "reason": measurement["not_computable_reason"] or "measurement_not_computable",
+                }
+            else:
+                verdict = DeterministicGate.evaluate(
+                    rule["rule_id"],
+                    {
+                        "class": product_class,
+                        "calibrated": calibrated,
+                        "measurement": measurement,
+                    },
+                    trusted_measurement=True,
+                )
+            verdict["roi_id"] = region_id
+            verdict["quantity"] = measurement["quantity"]
+            verdicts.append(verdict)
+    return measurements, verdicts, geometry_diagnostic
+
+
+def analyze_image(
+    image_bytes: bytes,
+    *,
+    geometry_by_region: dict[str, dict[str, Any]] | None = None,
+    calibrated: bool = False,
+    product_class: int = 2,
+) -> dict[str, Any]:
+    """Decode an image and return conservative proposals plus supplied-mask geometry.
+
+    The contour proposal stage itself does not segment pads/solder or determine
+    calibration. ``geometry_by_region`` is an internal integration hook for a
+    future trusted segmentation/calibration stage; absent entries remain
+    non-computable, and the default calibration state always abstains.
+    """
+    if not isinstance(calibrated, bool):
+        raise TypeError("invalid_calibration_state")
+    if isinstance(product_class, bool) or not isinstance(product_class, int):
+        raise TypeError("invalid_product_class")
+    if product_class not in (1, 2, 3):
+        raise ValueError("invalid_product_class")
+    if geometry_by_region is not None and not isinstance(geometry_by_region, dict):
+        raise TypeError("invalid_geometry_inputs")
     if not image_bytes:
         raise ValueError("empty_image")
     try:
@@ -125,9 +272,21 @@ def analyze_image(image_bytes: bytes) -> dict[str, Any]:
         hull_area = float(cv2.contourArea(cv2.convexHull(contour)))
         hsv_crop = cv2.cvtColor(crop, cv2.COLOR_BGR2HSV)
         region_gray = gray[y : y + box_height, x : x + box_width]
+        region_id = f"cv_{index:03d}"
+        geometry = (geometry_by_region or {}).get(region_id, {})
+        if not isinstance(geometry, dict):
+            raise TypeError("invalid_geometry_inputs")
+        measurements, rule_verdicts, geometry_diagnostic = _geometry_results(
+            region_id,
+            crop,
+            geometry,
+            product_class=product_class,
+            calibrated=calibrated,
+            quality_usable=blur_ok and exposure_ok,
+        )
         regions.append(
             {
-                "region_id": f"cv_{index:03d}",
+                "region_id": region_id,
                 "bbox_px": {"x": x, "y": y, "width": box_width, "height": box_height},
                 "features": {
                     "contour_area_px": round(area, 2),
@@ -148,6 +307,9 @@ def analyze_image(image_bytes: bytes) -> dict[str, Any]:
                     ),
                 },
                 "crop_sha256": hashlib.sha256(crop.tobytes()).hexdigest(),
+                "measurements": measurements,
+                "geometry_diagnostics": [geometry_diagnostic],
+                "rule_verdicts": rule_verdicts,
                 "interpretation": "unclassified_contour_candidate",
             }
         )
@@ -158,7 +320,7 @@ def analyze_image(image_bytes: bytes) -> dict[str, Any]:
             "width": width,
             "height": height,
             "decoded_pixels": width * height,
-            "calibrated": False,
+            "calibrated": calibrated,
         },
         "quality": {
             "blur_laplacian_var": round(blur_variance, 4),
@@ -168,6 +330,7 @@ def analyze_image(image_bytes: bytes) -> dict[str, Any]:
             "exposure_floor_pct_max": floors["exposure_clipped_pct_max"],
             "exposure_check": "pass" if exposure_ok else "fail",
             "prototype_quality_checks_passed": blur_ok and exposure_ok,
+            "usable": blur_ok and exposure_ok,
             "thresholds_validated": False,
         },
         "candidate_regions": regions,

@@ -112,7 +112,9 @@ async def inspect_photo(
         )
 
     try:
-        analysis = await run_in_threadpool(analyze_image, image_bytes)
+        analysis = await run_in_threadpool(
+            analyze_image, image_bytes, product_class=product_class
+        )
     except ValueError as exc:
         detail = str(exc)
         if detail == "decoded_image_too_large":
@@ -135,9 +137,9 @@ async def inspect_photo(
         }
 
     reasons = [
-        "solder_specific_measurements_not_implemented",
+        "pad_and_solder_segmentation_unavailable",
         "workmanship_thresholds_unreviewed",
-        "no_labeled_validation_set",
+        "no_double_labeled_validation_set",
     ]
     if not analysis["quality"]["prototype_quality_checks_passed"]:
         reasons.insert(0, "image_quality_below_provisional_floor")

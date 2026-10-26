@@ -1,9 +1,12 @@
+import json
 import struct
 import zlib
+from pathlib import Path
 
 import cv2
 import numpy as np
 from fastapi.testclient import TestClient
+from jsonschema import validate
 
 from app import main
 from app.config import settings
@@ -44,13 +47,48 @@ def test_inspection_decodes_photo_and_always_abstains():
     assert result["image"]["height"] == 480
     assert result["image"]["calibrated"] is False
     assert result["candidate_count"] >= 1
-    assert (
-        result["candidate_regions"][0]["interpretation"]
-        == "unclassified_contour_candidate"
+    region = result["candidate_regions"][0]
+    assert region["interpretation"] == "unclassified_contour_candidate"
+    assert {item["quantity"] for item in region["measurements"]} == {
+        "wetting_angle_deg",
+        "solder_coverage_pct",
+        "bridge_gap_mm",
+    }
+    assert all(item["computable"] is False for item in region["measurements"])
+    schema_path = Path(__file__).resolve().parents[2] / "schemas/core-schemas.json"
+    measurement_schema = json.loads(schema_path.read_text(encoding="utf-8"))["$defs"]["Measurement"]
+    for measurement in region["measurements"]:
+        validate(instance=measurement, schema=measurement_schema)
+    assert region["geometry_diagnostics"][0]["name"] == "fillet_concavity"
+    assert region["geometry_diagnostics"][0]["computable"] is False
+    assert all(item["verdict"] == "UNDETERMINED" for item in region["rule_verdicts"])
+    assert all(
+        item["reason"] == "uncalibrated"
+        for item in region["rule_verdicts"]
+        if "rule_id" in item
     )
     assert result["grading"]["verdict"] == "UNDETERMINED"
     assert result["grading"]["actionable"] is False
     assert result["model_assistance"]["status"] == "not_requested"
+
+
+def test_blurry_photo_fails_quality_floor_and_does_not_produce_actionable_grade():
+    image = np.full((480, 640, 3), 90, dtype=np.uint8)
+    cv2.rectangle(image, (140, 130), (330, 250), (210, 210, 210), thickness=4)
+    image = cv2.GaussianBlur(image, (0, 0), sigmaX=20)
+    ok, encoded = cv2.imencode(".jpg", image)
+    assert ok
+    response = client.post(
+        "/v1/inspect",
+        content=encoded.tobytes(),
+        headers={"content-type": "image/jpeg"},
+    )
+    assert response.status_code == 200
+    result = response.json()
+    assert result["quality"]["blur_check"] == "fail"
+    assert result["quality"]["usable"] is False
+    assert result["grading"]["verdict"] == "UNDETERMINED"
+    assert result["grading"]["actionable"] is False
 
 
 def test_inspection_model_is_opt_in_and_reports_missing_configuration(monkeypatch):
