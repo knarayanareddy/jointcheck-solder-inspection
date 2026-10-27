@@ -1,15 +1,23 @@
 # JointCheck — experimental solder-photo inspection prototype
 
-JointCheck is an early, safety-first prototype for image-assisted solder-workmanship review. It now accepts JPEG/PNG photos, computes basic OpenCV image-quality metrics, and proposes geometric contour regions. An optional Nebius-compatible vision-model request can suggest candidate joint types and known condition codes—but only after explicit user opt-in. **None of these outputs are validated solder measurements, and production grading remains disabled.**
+JointCheck is an early, safety-first prototype for image-assisted solder-workmanship review. It accepts JPEG/PNG photos, computes basic OpenCV image-quality metrics, and proposes geometric contour regions. The geometry library can measure explicitly supplied masks, but the photo route does not yet segment pads or solder. An optional Nebius-compatible vision-model request can suggest candidate joint types and known condition codes—but only after explicit user opt-in. **Production grading remains disabled.**
 
 > **Safety:** This prototype always reports `UNDETERMINED` for production grading. The checked-in workmanship thresholds are provisional and unreviewed; contour boxes are not confirmed joints, model suggestions are not verified evidence, and the project has no labelled image evaluation set. Do not use it to release or reject production assemblies. It is not affiliated with, endorsed by, or certified against IPC-A-610 or J-STD-001.
+
+## Calibration status — no class-sensitivity proof yet
+
+- **Labelled evaluation images checked in:** 0 (`data/testset/` is absent).
+- **Human-reviewed numeric rules:** 0 (all checked-in rules remain provisional/unreviewed).
+- **Validated class-sensitivity results:** not available. The requested 85° Class-2/Class-3 example is an unverified proposed threshold, not an observed evaluation result.
+
+The current rule table, frozen measurement vocabulary, and inspection inputs do not yet agree on the requested metrics. These figures intentionally report the present evidence state rather than implying calibration.
 
 ## Current capabilities
 
 | Component | What it does | What it does not do |
 |---|---|---|
 | Photo intake | Accepts JPEG/PNG up to 10 MiB, verifies basic signature/decode, hashes the original bytes | Persist uploads or perform calibrated image correction |
-| OpenCV | Reports provisional blur/exposure checks, dimensions, and unclassified contour candidates with pixel features | Identify solder joints reliably or measure solder coverage, volume, wetting, or defects |
+| OpenCV | Reports provisional blur/exposure checks and unclassified contour candidates; the geometry library accepts explicit masks and references for deterministic measurements | Segment pads/solder from uploaded photos, identify joints reliably, or produce production-validated measurements |
 | Optional model assistance | On explicit opt-in, sends the photo to the configured vision endpoint; restricts responses to candidate IDs and known condition codes | Issue verdicts, create measurements, or bypass human review |
 | Production grading | Always returns `UNDETERMINED` with reasons | Accept/reject production joints |
 | API/UI | Exposes photo analysis plus runtime status and an upload/results UI | Claim validated or production-ready inspection |
@@ -72,7 +80,7 @@ The tests use synthetic images and a mocked model response. They do not validate
 
 ## Repository map
 
-- `backend/app/vision/` — image-quality features and uncalibrated contour candidates
+- `backend/app/vision/` — image-quality features, contour candidates, and mask-driven geometric measurement functions
 - `backend/app/tf/vision.py` — explicit, optional vision-model suggestions
 - `backend/app/gate/` — fail-closed numeric rule evaluator
 - `backend/app/main.py` — FastAPI health, photo inspection, and gate routes
