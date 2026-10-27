@@ -1,6 +1,6 @@
 # Development commands for JointCheck's current prototype scope.
 
-.PHONY: help sample check test demo batch clean
+.PHONY: help sample check test demo batch build-pages record-demo clean
 
 INPUT ?= data/sample-gate-request.jsonl
 OUTPUT ?= -
@@ -11,6 +11,8 @@ help:
 	@echo "  make check    - Run backend tests, Ruff, and the frontend production build"
 	@echo "  make test     - Run the backend test suite"
 	@echo "  make demo     - Start the prototype API on 0.0.0.0:8000 (no API key needed)"
+	@echo "  make build-pages - Build the offline GitHub Pages frontend"
+	@echo "  make record-demo - Record a 2:45 Playwright demo (requires preview, Chromium, ffmpeg)"
 	@echo "  make batch    - Evaluate JSONL measurement assertions (INPUT=... OUTPUT=...)"
 	@echo "  make clean    - Remove virtualenvs, caches, and build artifacts"
 
@@ -28,6 +30,12 @@ test:
 
 demo:
 	cd backend && uv run uvicorn app.main:app --host 0.0.0.0 --port 8000
+
+build-pages:
+	cd frontend && npm ci && npm run build
+
+record-demo:
+	node scripts/record-demo.ts
 
 batch:
 	python jobs/run_gate_batch.py "$(INPUT)" --output "$(OUTPUT)"
