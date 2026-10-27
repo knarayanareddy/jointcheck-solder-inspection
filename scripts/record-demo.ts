@@ -4,8 +4,8 @@
 // starting `npm run preview -- --host 0.0.0.0 --port 4173` in frontend/.
 import { createRequire } from 'node:module';
 import { execFileSync } from 'node:child_process';
-import { mkdtemp, mkdir, rm } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
+import { access, mkdtemp, mkdir, readFile, rm, symlink } from 'node:fs/promises';
+import { homedir, tmpdir } from 'node:os';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -17,6 +17,11 @@ const outputFile = resolve(outputDirectory, 'jointcheck-demo.mp4');
 const demoUrl = process.env.JOINTCHECK_DEMO_URL ?? 'http://127.0.0.1:4173/jointcheck-solder-inspection/';
 const totalSeconds = 165;
 const frameCount = totalSeconds * 30;
+const renderToolsRoot = process.env.JOINTCHECK_RENDER_TOOLS_ROOT;
+const ffmpegPath = process.env.JOINTCHECK_FFMPEG_PATH
+  ?? (renderToolsRoot ? resolve(renderToolsRoot, 'node_modules/@ffmpeg-installer/linux-x64/ffmpeg') : 'ffmpeg');
+const ffprobePath = process.env.JOINTCHECK_FFPROBE_PATH
+  ?? (renderToolsRoot ? resolve(renderToolsRoot, 'node_modules/@ffprobe-installer/linux-x64/ffprobe') : 'ffprobe');
 
 const shots = [
   { name: 'hook', locator: '[data-demo-shot="hook"]', seconds: 20 },
@@ -32,12 +37,50 @@ if (shots.reduce((sum, shot) => sum + shot.seconds, 0) !== totalSeconds) {
   throw new Error('Demo shot schedule must total exactly 165 seconds.');
 }
 
+async function provisionBundledPlaywrightFfmpeg() {
+  if (!renderToolsRoot || process.platform !== 'linux') return;
+  const browserManifest = JSON.parse(await readFile(
+    resolve(root, 'frontend/node_modules/playwright-core/browsers.json'),
+    'utf8',
+  ));
+  const ffmpegRevision = browserManifest.browsers.find((browser) => browser.name === 'ffmpeg')?.revision;
+  if (!ffmpegRevision) throw new Error('Could not determine Playwright’s expected ffmpeg revision.');
+  const configuredPath = process.env.PLAYWRIGHT_BROWSERS_PATH;
+  const browserCache = configuredPath === '0'
+    ? resolve(root, 'frontend/node_modules/playwright-core/.local-browsers')
+    : configuredPath ?? resolve(homedir(), '.cache/ms-playwright');
+  const playwrightFfmpeg = resolve(browserCache, `ffmpeg-${ffmpegRevision}`, 'ffmpeg-linux');
+  await mkdir(resolve(browserCache, `ffmpeg-${ffmpegRevision}`), { recursive: true });
+  try {
+    await access(playwrightFfmpeg);
+  } catch {
+    await symlink(ffmpegPath, playwrightFfmpeg);
+  }
+}
+
 const temporaryDirectory = await mkdtemp(resolve(tmpdir(), 'jointcheck-recording-'));
 let browser;
 let context;
 try {
   await mkdir(outputDirectory, { recursive: true });
-  browser = await chromium.launch({ headless: true });
+  await provisionBundledPlaywrightFfmpeg();
+  const launchOptions = { headless: true };
+  const bundledChromiumRoot = process.env.JOINTCHECK_CHROMIUM_ROOT ?? renderToolsRoot;
+  if (bundledChromiumRoot) {
+    const bundledRequire = createRequire(resolve(bundledChromiumRoot, 'package.json'));
+    const chromiumModule = bundledRequire('@sparticuz/chromium');
+    const bundledChromium = chromiumModule.default ?? chromiumModule;
+    const bundledBin = resolve(bundledChromiumRoot, 'node_modules/@sparticuz/chromium/bin');
+    const bundledLibraries = await chromiumModule.inflate(resolve(bundledBin, 'al2023.tar.br'));
+    process.env.LD_LIBRARY_PATH = [resolve(bundledLibraries, 'lib'), process.env.LD_LIBRARY_PATH]
+      .filter(Boolean)
+      .join(':');
+    launchOptions.executablePath = await bundledChromium.executablePath();
+    launchOptions.args = bundledChromium.args;
+  } else if (process.env.JOINTCHECK_CHROMIUM_EXECUTABLE) {
+    launchOptions.executablePath = process.env.JOINTCHECK_CHROMIUM_EXECUTABLE;
+  }
+  browser = await chromium.launch(launchOptions);
   context = await browser.newContext({
     acceptDownloads: true,
     viewport: { width: 1440, height: 900 },
@@ -55,7 +98,7 @@ try {
     await target.scrollIntoViewIfNeeded();
     if (shot.name === 'inspection') {
       await page.getByLabel('Class example').selectOption('1');
-    } else if (shot.name === 'defect-example') {
+    } else if (shot.name === 'geometry-overlay') {
       await page.getByLabel('Class example').selectOption('3');
     } else if (shot.name === 'audit') {
       await page.getByRole('button', { name: 'Generate illustrative HTML report' }).click();
@@ -73,7 +116,7 @@ try {
   await browser.close();
   browser = undefined;
 
-  const sourceDuration = Number(execFileSync('ffprobe', [
+  const sourceDuration = Number(execFileSync(ffprobePath, [
     '-v', 'error', '-show_entries', 'format=duration', '-of', 'default=noprint_wrappers=1:nokey=1', webmFile,
   ], { encoding: 'utf8' }).trim());
   if (!Number.isFinite(sourceDuration) || sourceDuration <= 0) {
@@ -82,7 +125,7 @@ try {
   // Page setup is included in Playwright's recording. Normalize the entire capture
   // to the timed 165-second narration, keeping every shot and its relative timing.
   const ptsScale = (totalSeconds / sourceDuration).toPrecision(12);
-  execFileSync('ffmpeg', [
+  execFileSync(ffmpegPath, [
     '-y', '-i', webmFile,
     '-vf', `setpts=${ptsScale}*PTS,fps=30`,
     '-frames:v', String(frameCount),
@@ -90,7 +133,7 @@ try {
     '-pix_fmt', 'yuv420p', '-movflags', '+faststart', outputFile,
   ], { stdio: 'inherit' });
 
-  const finalDuration = Number(execFileSync('ffprobe', [
+  const finalDuration = Number(execFileSync(ffprobePath, [
     '-v', 'error', '-show_entries', 'format=duration', '-of', 'default=noprint_wrappers=1:nokey=1', outputFile,
   ], { encoding: 'utf8' }).trim());
   if (Math.abs(finalDuration - totalSeconds) > 0.05) {
@@ -99,7 +142,9 @@ try {
   console.log(`Saved ${outputFile} (${finalDuration.toFixed(3)} seconds).`);
 } catch (error) {
   const message = error instanceof Error ? error.message : String(error);
-  if (message.includes('Executable doesn\'t exist') || message.includes('browserType.launch')) {
+  if (message.includes('ffmpeg-') || message.includes('Video rendering requires ffmpeg')) {
+    console.error('Playwright video encoding needs its ffmpeg binary. Install it with `cd frontend && npx playwright install ffmpeg`.');
+  } else if (message.includes('Executable doesn\'t exist') || message.includes('browserType.launch')) {
     console.error('Playwright Chromium is not installed. Install it with `cd frontend && npx playwright install chromium`.');
   } else if (message.includes('ENOENT') && (message.includes('ffmpeg') || message.includes('ffprobe'))) {
     console.error('ffmpeg and ffprobe are required for MP4 encoding; install ffmpeg and rerun the recorder.');

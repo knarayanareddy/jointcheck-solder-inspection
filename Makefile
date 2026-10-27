@@ -35,7 +35,7 @@ build-pages:
 	cd frontend && npm ci && npm run build
 
 record-demo:
-	node scripts/record-demo.ts
+	cd frontend && npm run record:demo
 
 batch:
 	python jobs/run_gate_batch.py "$(INPUT)" --output "$(OUTPUT)"

@@ -1,49 +1,44 @@
-# Devpost submission draft — JointCheck
-
-> Draft only. Verify the event's rules, track, team details, and deployment status before submitting. This text intentionally makes no field-test, benchmark, customer, or standards-compliance claims.
+# Devpost submission — JointCheck
 
 ## Project name
 
-**JointCheck — evidence-first solder inspection prototype**
+**JointCheck — Evidence-First Solder Inspection Prototype**
 
-## One-line summary
+## Tagline
 
-An experimental solder-workmanship interface that makes geometric evidence inspectable and abstains from production grades when trusted measurements are missing.
+**Show the geometry. Keep synthetic fixture labels separate from real inspection results.**
 
-## Inspiration
+## Project description
 
-Visual inspection software can look more certain than its inputs justify. JointCheck explores the opposite design choice: expose what the prototype can show, label illustrative material honestly, and make missing calibration or validation a visible limitation rather than an implied pass/fail result.
+Visual inspection software can look more certain than its evidence supports. JointCheck is an experimental interface for exploring how inspection evidence and uncertainty might be presented without implying production readiness.
 
-## What it does
+The static GitHub Pages demo offers three hand-authored SVG scenarios and an HTML report generated in the browser. Green `ACCEPT` and red `REJECT` strings on the cards are explicitly scripted expected labels in a synthetic UI test-fixture profile. They are not calculated from an image, measurements, calibrated thresholds, workmanship rules, or the separate photo-analysis API. The diagrams are not photographs, and the labels do not represent IPC-A-610 decisions or production verdicts.
 
-The repository contains a React/Vite interface and a Python API prototype. The interface includes an offline static canvas with three synthetic, hand-authored vector schematics. Their angle and clearance annotations are scenario inputs, not measurements. A browser-only action downloads a self-contained HTML explainer and displays a SHA-256 checksum of its exact bytes. The checksum is useful for byte comparison against a separately trusted copy; it is not a digital signature, proof of origin, or tamper-proof certificate.
+The separate Python API prototype performs preliminary image-quality calculations and contour proposals. It does not have trusted camera calibration or pad-and-solder segmentation and does not issue production grades. The GitHub Pages frontend has no backend, so its photo-analysis controls are unavailable.
 
-The separate photo-analysis path is experimental contour and image-quality tooling. It is not a trained joint detector, has no trusted camera calibration or pad/solder segmentation source, and does not make a production ACCEPT/REJECT decision. The static GitHub Pages build contains no backend, so live photo analysis is unavailable there.
+The browser-generated HTML report includes the fixture descriptions and repeats these limits. Its SHA-256 value is a checksum of the exact bytes downloaded; it is not a digital signature, proof of origin, or tamper-proof certificate.
 
 ## How it was built
 
-- React and Vite provide the browser UI and static Pages build.
-- Python and FastAPI provide a separately run experimental API.
-- The Pages demo works without a network service: its diagrams and report are generated in the browser.
-- Playwright automation is provided to capture the timed demonstration; Chromium and ffmpeg are required to produce the MP4.
+- React and Vite for the browser UI and offline static site.
+- Python and FastAPI for the separately run experimental API.
+- Playwright for timed screen capture; ffmpeg/ffprobe encode and verify the 2:45 MP4.
 
-No external model call or Nebius Sandbox run is claimed for this demo. Do not add those claims unless independently performed and documented.
+No external model call, Nebius Sandbox run, performance benchmark, user study, or real-board evaluation is claimed for this submission.
 
-## What is different
+## What we learned
 
-The prototype emphasizes the boundary between a visible contour and a trusted measurement. Its demonstration scenes are explicitly synthetic, its report is described as illustrative, and its UI surfaces the absence of calibration and validation. It is a workflow and safety-prototyping exercise—not a validated inspection product.
+A prototype can show geometry without presenting a vector overlay as a model detection. Explicitly calling green and red words “test fixture expectations” helps distinguish software test data from measured outcomes. The static site also makes the backend boundary visible instead of implying that photo analysis is hosted with the frontend.
 
-## Challenges and learnings
+## What comes next
 
-The main challenge is preserving uncertainty across the interface: a schematic must not resemble a captured inspection, a geometric overlay must not imply a model detection, and a checksum must not be marketed as a signature. A static frontend also cannot silently imply that the backend is hosted alongside it.
+A future inspection study would require appropriate data governance, representative labelled board images, trusted camera calibration, defined measurement uncertainty, qualified review of workmanship rules, an independent holdout evaluation, and a documented hardware assessment. Until then, JointCheck is not suitable for accepting or rejecting assemblies.
 
-## What is next
+## Project links
 
-With appropriate data governance and qualified reviewers: collect representative, consented and traceable images; establish camera calibration and measurement uncertainty; define and independently review any workmanship rules; evaluate against an expert-labelled holdout set; and run a documented hardware and security assessment. Until those steps are complete, the prototype should not be used to accept or reject assemblies.
+- **Live static demo:** https://knarayanareddy.github.io/jointcheck-solder-inspection/
+- **Source repository:** https://github.com/knarayanareddy/jointcheck-solder-inspection
+- **Demo video (silent screen recording, 2:45):** [`docs/media/jointcheck-demo.mp4`](media/jointcheck-demo.mp4)
+- **Narration script:** [`video/script.md`](../video/script.md) (voiceover is not included in the MP4).
 
-## Evidence and links to add before submission
-
-- Source repository: `https://github.com/knarayanareddy/jointcheck-solder-inspection`
-- Demo URL: `https://knarayanareddy.github.io/jointcheck-solder-inspection/` (confirm that Pages deployment has completed before describing it as live)
-- Video: `docs/media/jointcheck-demo.mp4` (generated only after running the recorder with Chromium and ffmpeg; do not link a missing file)
-- Team, event track, screenshots, and any real feedback: fill in only with verified details.
+Fill any event-specific track or team fields using verified details from the actual submission; none are assumed here.

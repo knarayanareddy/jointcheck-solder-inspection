@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
-    "preview": "vite preview --host 0.0.0.0"
+    "preview": "vite preview --host 0.0.0.0",
+    "record:demo": "node ../scripts/record-demo.ts",
+    "test:fixtures": "node --experimental-strip-types --test ../scripts/demo-fixtures.test.mjs"
   },
   "dependencies": {
     "lucide-react": "^0.344.0",
