@@ -46,6 +46,32 @@ npm run dev
 
 Vite proxies requests through relative `/health` and `/v1/*` paths to the backend. The photo-upload flow runs OpenCV locally in the backend. No photo is sent to a model unless the user checks **Request optional model suggestions**.
 
+## Static GitHub Pages demo
+
+The static demo is configured to deploy from `main` via `.github/workflows/deploy-pages.yml` to `https://knarayanareddy.github.io/jointcheck-solder-inspection/`. It has no backend: photo inspection is explicitly unavailable there. The three offline vector scenes are synthetic, their labels are illustrative scenario inputs, and they are never graded. The browser-generated HTML file is an illustrative report, not an inspection certificate; its SHA-256 is a byte checksum, not a digital signature or tamper-proof seal.
+
+Build the static site locally with:
+
+```bash
+make build-pages
+cd frontend
+npm run preview -- --host 0.0.0.0 --port 4173
+```
+
+Open `http://localhost:4173/jointcheck-solder-inspection/`. The Pages workflow uploads `frontend/dist`; a deployment occurs only after the workflow runs on `main` or is manually dispatched.
+
+## Demo recording
+
+`scripts/record-demo.ts` uses Playwright to capture the seven-shot, 165-second screen demo and ffmpeg to encode `docs/media/jointcheck-demo.mp4`. In separate terminals, start the frontend preview above and run:
+
+```bash
+cd frontend && npx playwright install chromium
+# Install ffmpeg/ffprobe using your operating system's package manager.
+cd .. && make record-demo
+```
+
+The recording contains screen video only; narration must be recorded separately to `video/script.md`'s timing. Browser and ffmpeg were not included as part of the static build. Set `JOINTCHECK_DEMO_URL` only if previewing from a different URL.
+
 ## Photo-inspection API
 
 `POST /v1/inspect?product_class=2&model_assist=false` accepts the raw bytes of a JPEG or PNG with the matching `Content-Type`. It returns the image hash/dimensions, provisional quality metrics, contour proposals and an always-abstaining grading object. Uploads are limited to 10 MiB and 40 megapixels.

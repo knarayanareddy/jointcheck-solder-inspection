@@ -73,6 +73,78 @@ function verdictColor(verdict: string): string {
   return 'var(--color-text-muted)';
 }
 
+type DemoScene = {
+  id: 'A' | 'B' | 'C';
+  title: string;
+  referenceClass: number;
+  exampleInput: string;
+  note: string;
+};
+
+const IS_GITHUB_PAGES_DEMO = typeof window !== 'undefined' && window.location.pathname.startsWith('/jointcheck-solder-inspection/');
+
+const DEMO_SCENES: DemoScene[] = [
+  {
+    id: 'A',
+    title: 'Shallow fillet example',
+    referenceClass: 1,
+    exampleInput: '≈28° angle (illustrative input)',
+    note: 'No image measurement or workmanship verdict is computed.',
+  },
+  {
+    id: 'B',
+    title: 'Separated-pad example',
+    referenceClass: 2,
+    exampleInput: '>0.15 mm clearance (illustrative input)',
+    note: 'The gap is schematic; no scale reference or calibrated clearance is present.',
+  },
+  {
+    id: 'C',
+    title: 'Convex-bead example',
+    referenceClass: 3,
+    exampleInput: '>90° contact geometry (illustrative input)',
+    note: 'This is not an IPC-A-610 determination or a production reject.',
+  },
+];
+
+function DemoIllustration({ sceneId }: { sceneId: DemoScene['id'] }) {
+  return (
+    <svg className="demo-illustration" viewBox="0 0 280 180" role="img" aria-label={`Synthetic vector schematic for Joint ${sceneId}`}>
+      <rect x="1" y="1" width="278" height="178" rx="9" fill="var(--color-bg-secondary)" stroke="var(--color-border)" />
+      {sceneId === 'A' && (
+        <g>
+          <rect x="32" y="145" width="208" height="18" rx="3" fill="var(--color-warning)" opacity="0.45" />
+          <path d="M58 145 Q82 134 98 115 L130 112 L130 145 Z" fill="var(--color-cyan)" opacity="0.35" stroke="var(--color-cyan)" strokeWidth="2" />
+          <path d="M58 145 Q82 134 98 115 L130 112" fill="none" stroke="var(--color-cyan)" strokeWidth="3" />
+          <line x1="58" y1="145" x2="128" y2="110" stroke="var(--color-text-primary)" strokeDasharray="5 4" />
+          <path d="M84 145 A26 26 0 0 0 81 133" fill="none" stroke="var(--color-cyan)" strokeWidth="2" />
+          <text x="86" y="128" fill="var(--color-cyan)" fontSize="12">angle arc</text>
+        </g>
+      )}
+      {sceneId === 'B' && (
+        <g>
+          <rect x="20" y="145" width="104" height="18" rx="3" fill="var(--color-warning)" opacity="0.45" />
+          <rect x="156" y="145" width="104" height="18" rx="3" fill="var(--color-warning)" opacity="0.45" />
+          <path d="M57 145 Q70 115 94 145 Z M183 145 Q198 111 222 145 Z" fill="var(--color-cyan)" opacity="0.38" stroke="var(--color-cyan)" strokeWidth="2" />
+          <line x1="124" y1="125" x2="156" y2="125" stroke="var(--color-text-primary)" strokeDasharray="4 3" />
+          <path d="M124 120 v10 M156 120 v10" stroke="var(--color-text-primary)" strokeWidth="2" />
+          <text x="112" y="112" fill="var(--color-text-secondary)" fontSize="11">gap (not scaled)</text>
+        </g>
+      )}
+      {sceneId === 'C' && (
+        <g>
+          <rect x="32" y="145" width="208" height="18" rx="3" fill="var(--color-warning)" opacity="0.45" />
+          <path d="M70 145 C72 95 100 61 142 68 C178 74 198 111 207 145 Z" fill="var(--color-cyan)" opacity="0.2" stroke="var(--color-cyan)" strokeWidth="2" />
+          <path d="M70 145 C72 95 100 61 142 68 C178 74 198 111 207 145" fill="none" stroke="var(--color-cyan)" strokeWidth="3" />
+          <line x1="70" y1="145" x2="70" y2="103" stroke="var(--color-text-primary)" strokeDasharray="5 4" />
+          <text x="92" y="50" fill="var(--color-cyan)" fontSize="12">convex outline</text>
+        </g>
+      )}
+      <text x="14" y="22" fill="var(--color-text-muted)" fontSize="10" letterSpacing="1">SYNTHETIC VECTOR · NOT A PHOTO</text>
+    </svg>
+  );
+}
+
 export default function App() {
   const [connection, setConnection] = useState<Connection>('checking');
   const [info, setInfo] = useState<ApiInfo | null>(null);
@@ -83,9 +155,14 @@ export default function App() {
   const [inspection, setInspection] = useState<Inspection | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [demoReportHash, setDemoReportHash] = useState<string | null>(null);
   const requestRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
+    if (IS_GITHUB_PAGES_DEMO) {
+      setConnection('offline');
+      return;
+    }
     const controller = new AbortController();
     Promise.all([
       fetch('/health', { signal: controller.signal }).then((response) => {
@@ -187,24 +264,81 @@ export default function App() {
     if (inspection && file) void runInspection(nextClass);
   }
 
+  async function downloadIllustrativeReport() {
+    const scenarioRows = DEMO_SCENES.map((scene) => (
+      `<li><strong>Joint ${scene.id}: ${scene.title}</strong> — ${scene.exampleInput}. Illustrative Class ${scene.referenceClass} selector mapping. <em>Illustration only; not measured or graded.</em></li>`
+    )).join('');
+    const htmlReport = `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>JointCheck illustrative evidence</title><style>body{font:16px/1.5 system-ui,sans-serif;max-width:800px;margin:40px auto;padding:0 20px;color:#17202a} .notice{border:2px solid #9b3b16;padding:16px;background:#fff4ed} footer{border-top:1px solid #aaa;margin-top:24px;padding-top:12px;overflow-wrap:anywhere}</style></head><body><h1>JointCheck — illustrative demo report</h1><div class="notice"><strong>SIMULATION ONLY — NOT AN INSPECTION CERTIFICATE.</strong><p>These synthetic vector scenarios are not photographs, measurements, IPC-A-610 determinations, or production verdicts. This report does not assert ACCEPT or REJECT.</p></div><p>Illustrative class example selected in the UI: Class ${productClass}. No calibration or grading was performed.</p><h2>Illustrative scenario inputs</h2><ul>${scenarioRows}</ul><footer><strong>Integrity note:</strong> a SHA-256 checksum can detect a byte change only when compared with a separately trusted copy. It is not a digital signature or tamper-proof certification.</footer></body></html>`;
+    try {
+      const reportBytes = new TextEncoder().encode(htmlReport);
+      const digest = await crypto.subtle.digest('SHA-256', reportBytes);
+      const checksum = Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('');
+      setDemoReportHash(checksum);
+      const url = URL.createObjectURL(new Blob([reportBytes], { type: 'text/html;charset=utf-8' }));
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'jointcheck-illustrative-demo-report.html';
+      link.click();
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch {
+      setError('Browser SHA-256 support is unavailable; no report was downloaded.');
+    }
+  }
+
   return (
     <main className="shell">
       <header className="topbar">
-        <a className="wordmark" href="/" aria-label="JointCheck home">
+        <a className="wordmark" href={IS_GITHUB_PAGES_DEMO ? '/jointcheck-solder-inspection/' : '/'} aria-label="JointCheck home">
           <span className="mark" aria-hidden="true">JC</span>
           <span>JointCheck</span>
         </a>
         <span className="prototype-label">EXPERIMENTAL PROTOTYPE</span>
       </header>
 
-      <section className="hero" aria-labelledby="page-title">
+      <section className="hero" aria-labelledby="page-title" data-demo-shot="hook">
         <p className="eyebrow">SOLDER WORKMANSHIP · PROOF-FIRST TOOLING</p>
         <h1 id="page-title">Explore the image. Withhold the verdict.</h1>
         <p className="intro">
-          Upload a macro photo to calculate basic image-quality metrics and propose
-          contour regions. The CV stage is not a trained joint detector, and this
-          prototype deliberately does not make production grading decisions.
+          {IS_GITHUB_PAGES_DEMO
+            ? 'Explore three offline synthetic vector schematics and generate a local illustrative HTML report. GitHub Pages has no analysis backend; photo inspection is unavailable in this static demo.'
+            : 'Upload a macro photo to calculate basic image-quality metrics and propose contour regions. The CV stage is not a trained joint detector, and this prototype deliberately does not make production grading decisions.'}
         </p>
+      </section>
+
+      <section className="results" id="demo-scenes" aria-labelledby="demo-title" data-demo-shot="inspection">
+        <div className="results-title-row">
+          <div>
+            <p className="eyebrow">STATIC CANVAS · OFFLINE</p>
+            <h2 id="demo-title">Three illustrative joint geometries</h2>
+          </div>
+          <label className="demo-selector" htmlFor="demo-class-selector">Class example
+            <select id="demo-class-selector" value={productClass} onChange={(event) => changeProductClass(event.target.value)}>
+              <option value={1}>Class 1</option>
+              <option value={2}>Class 2</option>
+              <option value={3}>Class 3</option>
+            </select>
+          </label>
+          <span className="verdict-badge" style={{ color: 'var(--color-text-muted)', borderColor: 'var(--color-text-muted)' }}>NOT GRADED</span>
+        </div>
+        <p className="muted">These are synthetic vector schematics, not demonstration photos. The angle and clearance text is scenario input, not a CV measurement. No ACCEPT/REJECT decision is produced.</p>
+        <div className="result-grid">
+          {DEMO_SCENES.map((scene) => (
+            <article className="result-panel" key={scene.id} data-demo-scene={scene.id} data-demo-shot={scene.id === 'C' ? 'geometry-overlay' : undefined}>
+              <h3>Joint {scene.id} · {scene.title}</h3>
+              <DemoIllustration sceneId={scene.id} />
+              <p><strong>{scene.exampleInput}</strong></p>
+              <p className="muted">Illustrative selector mapping: Class {scene.referenceClass} (not a grade). Current selector: Class {productClass}. {scene.note}</p>
+              <span className="verdict-badge" style={{ color: 'var(--color-text-muted)', borderColor: 'var(--color-text-muted)' }}>SIMULATED · NOT GRADED</span>
+            </article>
+          ))}
+        </div>
+        <div className="button-row" data-demo-shot="audit">
+          <button className="secondary-button" type="button" data-demo-export onClick={() => void downloadIllustrativeReport()}>
+            Generate illustrative HTML report
+          </button>
+          <span className="muted">Local-only checksum; not a signature or verified certificate.</span>
+        </div>
+        {demoReportHash && <p className="muted" role="status">SHA-256 of downloaded report bytes: <code>{demoReportHash}</code> · recomputable checksum, not proof of measurement truth.</p>}
       </section>
 
       <section className="status-card service-card" aria-labelledby="service-title">
@@ -222,7 +356,9 @@ export default function App() {
           {connection === 'online'
             ? 'Image quality and experimental contour proposals are available.'
             : connection === 'offline'
-              ? 'Could not reach the backend. Start it with make demo, then refresh this page.'
+              ? IS_GITHUB_PAGES_DEMO
+                ? 'Static GitHub Pages demo: the backend is not hosted here. Illustrative scenarios and local report generation work offline; live photo inspection is unavailable.'
+                : 'Could not reach the backend. Start it with make demo, then refresh this page.'
               : 'Checking backend health and capabilities…'}
         </p>
         {info && (
@@ -237,19 +373,20 @@ export default function App() {
         <div className="section-heading">
           <p className="eyebrow">01 / IMAGE INTAKE</p>
           <h2 id="upload-title">Analyze one photo</h2>
-          <p>JPEG or PNG · maximum 10 MiB · image is processed locally by the CV stage.</p>
+          <p>{IS_GITHUB_PAGES_DEMO ? 'Photo analysis is unavailable on this static GitHub Pages demo.' : 'JPEG or PNG · maximum 10 MiB · image is processed by the backend CV stage.'}</p>
         </div>
         <form onSubmit={submitInspection}>
-          <label className="file-picker" htmlFor="photo-input">
+          <label className="file-picker" htmlFor="photo-input" aria-disabled={IS_GITHUB_PAGES_DEMO}>
             <span className="upload-icon" aria-hidden="true">＋</span>
             <span>{file ? file.name : 'Choose a macro photo'}</span>
-            <span className="file-hint">{file ? `${(file.size / 1024).toFixed(0)} KB` : 'JPEG or PNG'}</span>
+            <span className="file-hint">{IS_GITHUB_PAGES_DEMO ? 'Unavailable on Pages' : file ? `${(file.size / 1024).toFixed(0)} KB` : 'JPEG or PNG'}</span>
           </label>
           <input
             id="photo-input"
             className="visually-hidden"
             type="file"
             accept="image/jpeg,image/png"
+            disabled={IS_GITHUB_PAGES_DEMO}
             onChange={(event) => chooseFile(event.currentTarget.files?.[0])}
           />
           <div className="form-row">
@@ -277,8 +414,8 @@ export default function App() {
             </span>
           </label>
           <div className="button-row">
-            <button className="primary-button" type="submit" disabled={!file || busy || connection !== 'online'}>
-              {busy ? 'Analyzing photo…' : 'Run experimental analysis'}
+            <button className="primary-button" type="submit" disabled={IS_GITHUB_PAGES_DEMO || !file || busy || connection !== 'online'}>
+              {IS_GITHUB_PAGES_DEMO ? 'Photo analysis unavailable on Pages' : busy ? 'Analyzing photo…' : 'Run experimental analysis'}
             </button>
             {busy && <button className="secondary-button" type="button" onClick={() => requestRef.current?.abort()}>Cancel</button>}
           </div>
@@ -372,17 +509,27 @@ export default function App() {
         </section>
       )}
 
-      <section className="notice" aria-labelledby="safety-title">
+      <section className="notice" aria-labelledby="safety-title" data-demo-shot="fail-closed">
         <h2 id="safety-title">Not for production decisions</h2>
         <p>
-          Contour proposals are not joint detections. Model suggestions, when
-          explicitly enabled, are unverified and advisory only. Workmanship
-          thresholds remain provisional; the system never issues a production
-          accept/reject grade. No image is sent to a model unless the opt-in is selected.
+          If trusted calibration, segmentation, or measurement evidence is missing,
+          the safe result is UNDETERMINED. This photo route currently has no pad/solder
+          segmentation or calibration source and never issues production ACCEPT/REJECT.
+          Optional model suggestions remain unverified and advisory only.
         </p>
       </section>
 
-      <footer>JointCheck · Prototype scope and API status are available at <code>/v1/info</code>.</footer>
+      <section className="notice" aria-labelledby="limitations-title" id="calibration-status" data-demo-shot="limitations">
+        <h2 id="limitations-title">Honest limitations</h2>
+        <p>
+          The three diagrams above are synthetic and are not a training set. The repository
+          has no labelled evaluation images, no reviewed numeric workmanship rules, and no
+          edge-hardware latency benchmark. Do not infer performance or standards compliance
+          from this canvas.
+        </p>
+      </section>
+
+      <footer data-demo-shot="close">JointCheck · Experimental geometry and a fail-closed gate; no validated performance claim. API status is at <code>/v1/info</code>.</footer>
     </main>
   );
 }
