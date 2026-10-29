@@ -1,5 +1,7 @@
 # JointCheck — experimental solder-photo inspection prototype
 
+[![Live Demo](https://img.shields.io/badge/Live_Demo-GitHub_Pages-2ea44f?style=for-the-badge)](https://knarayanareddy.github.io/jointcheck-solder-inspection/)
+
 JointCheck is an early, safety-first prototype for image-assisted solder-workmanship review. It accepts JPEG/PNG photos, computes basic OpenCV image-quality metrics, and proposes geometric contour regions. The geometry library can measure explicitly supplied masks, but the photo route does not yet segment pads or solder. An optional Nebius-compatible vision-model request can suggest candidate joint types and known condition codes—but only after explicit user opt-in. **Production grading remains disabled.**
 
 > **Safety:** This prototype always reports `UNDETERMINED` for production grading. The checked-in workmanship thresholds are provisional and unreviewed; contour boxes are not confirmed joints, model suggestions are not verified evidence, and the project has no labelled image evaluation set. Do not use it to release or reject production assemblies. It is not affiliated with, endorsed by, or certified against IPC-A-610 or J-STD-001.
@@ -48,7 +50,7 @@ Vite proxies requests through relative `/health` and `/v1/*` paths to the backen
 
 ## Static GitHub Pages demo
 
-The static demo is configured to deploy from `main` via `.github/workflows/deploy-pages.yml` to `https://knarayanareddy.github.io/jointcheck-solder-inspection/`. It has no backend: photo inspection is explicitly unavailable there. The three offline vector scenes are synthetic, their labels are illustrative scenario inputs, and they are never graded. The browser-generated HTML file is an illustrative report, not an inspection certificate; its SHA-256 is a byte checksum, not a digital signature or tamper-proof seal.
+The static demo is live at `https://knarayanareddy.github.io/jointcheck-solder-inspection/` and is updated by `.github/workflows/deploy-pages.yml` from `main`. It has no backend: photo inspection is explicitly unavailable there. The three offline vector scenes are synthetic UI test fixtures. Their green/red ACCEPT/REJECT strings are scripted expected fixture labels only—not measured inspection outputs, workmanship-rule evaluations, IPC determinations, or production verdicts. The HTML report is an illustrative fixture report, not an inspection certificate; SHA-256 is a byte checksum, not a digital signature or tamper-proof seal.
 
 Build the static site locally with:
 
@@ -58,19 +60,19 @@ cd frontend
 npm run preview -- --host 0.0.0.0 --port 4173
 ```
 
-Open `http://localhost:4173/jointcheck-solder-inspection/`. The Pages workflow uploads `frontend/dist`; a deployment occurs only after the workflow runs on `main` or is manually dispatched.
+Open `http://localhost:4173/jointcheck-solder-inspection/`. `cd frontend && npm run test:fixtures` checks the three scripted labels and verifies that calibration and inspection grading are disabled. The Pages workflow uploads `frontend/dist`; a deployment occurs only after the workflow runs on `main` or is manually dispatched.
 
 ## Demo recording
 
 `scripts/record-demo.ts` uses Playwright to capture the seven-shot, 165-second screen demo and ffmpeg to encode `docs/media/jointcheck-demo.mp4`. In separate terminals, start the frontend preview above and run:
 
 ```bash
-cd frontend && npx playwright install chromium
-# Install ffmpeg/ffprobe using your operating system's package manager.
-cd .. && make record-demo
+cd frontend && npx playwright install chromium ffmpeg
+# Also make ffmpeg and ffprobe available on PATH for MP4 encoding/verification.
+npm run record:demo
 ```
 
-The recording contains screen video only; narration must be recorded separately to `video/script.md`'s timing. Browser and ffmpeg were not included as part of the static build. Set `JOINTCHECK_DEMO_URL` only if previewing from a different URL.
+The recording contains screen video only; narration must be recorded separately to `video/script.md`'s timing. `npm run record:demo` and `npm run test:fixtures` use Node's built-in TypeScript stripping and require Node 22.6+; the static site build itself supports the existing Node 20+ baseline. Browser and ffmpeg are not included in the static build. Set `JOINTCHECK_DEMO_URL` only if previewing from a different URL.
 
 ## Photo-inspection API
 

@@ -1,4 +1,5 @@
 import { FormEvent, useEffect, useRef, useState } from 'react';
+import { DEMO_FIXTURE_PROFILE, DEMO_SCENES, type DemoScene } from './demoFixtures';
 
 type ApiInfo = {
   status: string;
@@ -73,39 +74,7 @@ function verdictColor(verdict: string): string {
   return 'var(--color-text-muted)';
 }
 
-type DemoScene = {
-  id: 'A' | 'B' | 'C';
-  title: string;
-  referenceClass: number;
-  exampleInput: string;
-  note: string;
-};
-
 const IS_GITHUB_PAGES_DEMO = typeof window !== 'undefined' && window.location.pathname.startsWith('/jointcheck-solder-inspection/');
-
-const DEMO_SCENES: DemoScene[] = [
-  {
-    id: 'A',
-    title: 'Shallow fillet example',
-    referenceClass: 1,
-    exampleInput: '≈28° angle (illustrative input)',
-    note: 'No image measurement or workmanship verdict is computed.',
-  },
-  {
-    id: 'B',
-    title: 'Separated-pad example',
-    referenceClass: 2,
-    exampleInput: '>0.15 mm clearance (illustrative input)',
-    note: 'The gap is schematic; no scale reference or calibrated clearance is present.',
-  },
-  {
-    id: 'C',
-    title: 'Convex-bead example',
-    referenceClass: 3,
-    exampleInput: '>90° contact geometry (illustrative input)',
-    note: 'This is not an IPC-A-610 determination or a production reject.',
-  },
-];
 
 function DemoIllustration({ sceneId }: { sceneId: DemoScene['id'] }) {
   return (
@@ -125,10 +94,9 @@ function DemoIllustration({ sceneId }: { sceneId: DemoScene['id'] }) {
         <g>
           <rect x="20" y="145" width="104" height="18" rx="3" fill="var(--color-warning)" opacity="0.45" />
           <rect x="156" y="145" width="104" height="18" rx="3" fill="var(--color-warning)" opacity="0.45" />
-          <path d="M57 145 Q70 115 94 145 Z M183 145 Q198 111 222 145 Z" fill="var(--color-cyan)" opacity="0.38" stroke="var(--color-cyan)" strokeWidth="2" />
-          <line x1="124" y1="125" x2="156" y2="125" stroke="var(--color-text-primary)" strokeDasharray="4 3" />
-          <path d="M124 120 v10 M156 120 v10" stroke="var(--color-text-primary)" strokeWidth="2" />
-          <text x="112" y="112" fill="var(--color-text-secondary)" fontSize="11">gap (not scaled)</text>
+          <path d="M74 145 Q91 112 115 128 C130 141 150 141 165 128 Q189 112 206 145 Z" fill="var(--color-cyan)" opacity="0.38" stroke="var(--color-cyan)" strokeWidth="2" />
+          <line x1="124" y1="169" x2="156" y2="169" stroke="var(--color-text-primary)" strokeDasharray="4 3" />
+          <text x="78" y="103" fill="var(--color-text-secondary)" fontSize="11">bridge outline · not scaled</text>
         </g>
       )}
       {sceneId === 'C' && (
@@ -266,9 +234,9 @@ export default function App() {
 
   async function downloadIllustrativeReport() {
     const scenarioRows = DEMO_SCENES.map((scene) => (
-      `<li><strong>Joint ${scene.id}: ${scene.title}</strong> — ${scene.exampleInput}. Illustrative Class ${scene.referenceClass} selector mapping. <em>Illustration only; not measured or graded.</em></li>`
+      `<li><strong>Joint ${scene.id}: Class ${scene.referenceClass} ${scene.conditionLabel}</strong> — ${scene.exampleInput}. Scripted UI fixture expectation: ${scene.fixtureLabel}. <em>This is fixture metadata only; not measured, inspected, or graded.</em></li>`
     )).join('');
-    const htmlReport = `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>JointCheck illustrative evidence</title><style>body{font:16px/1.5 system-ui,sans-serif;max-width:800px;margin:40px auto;padding:0 20px;color:#17202a} .notice{border:2px solid #9b3b16;padding:16px;background:#fff4ed} footer{border-top:1px solid #aaa;margin-top:24px;padding-top:12px;overflow-wrap:anywhere}</style></head><body><h1>JointCheck — illustrative demo report</h1><div class="notice"><strong>SIMULATION ONLY — NOT AN INSPECTION CERTIFICATE.</strong><p>These synthetic vector scenarios are not photographs, measurements, IPC-A-610 determinations, or production verdicts. This report does not assert ACCEPT or REJECT.</p></div><p>Illustrative class example selected in the UI: Class ${productClass}. No calibration or grading was performed.</p><h2>Illustrative scenario inputs</h2><ul>${scenarioRows}</ul><footer><strong>Integrity note:</strong> a SHA-256 checksum can detect a byte change only when compared with a separately trusted copy. It is not a digital signature or tamper-proof certification.</footer></body></html>`;
+    const htmlReport = `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>JointCheck illustrative evidence</title><style>body{font:16px/1.5 system-ui,sans-serif;max-width:800px;margin:40px auto;padding:0 20px;color:#17202a} .notice{border:2px solid #9b3b16;padding:16px;background:#fff4ed} footer{border-top:1px solid #aaa;margin-top:24px;padding-top:12px;overflow-wrap:anywhere}</style></head><body><h1>JointCheck — illustrative demo report</h1><div class="notice"><strong>SYNTHETIC UI FIXTURES — NOT AN INSPECTION CERTIFICATE.</strong><p>The ACCEPT/REJECT strings listed here are scripted test-fixture expectations only. These synthetic vectors are not photographs or measurements and do not represent CV results, IPC-A-610 determinations, or production verdicts. No calibration or inspection grading was performed.</p></div><p>Illustrative class example selected in the UI: Class ${productClass}. No calibration or grading was performed.</p><h2>Illustrative scenario inputs</h2><ul>${scenarioRows}</ul><footer><strong>Integrity note:</strong> a SHA-256 checksum can detect a byte change only when compared with a separately trusted copy. It is not a digital signature or tamper-proof certification.</footer></body></html>`;
     try {
       const reportBytes = new TextEncoder().encode(htmlReport);
       const digest = await crypto.subtle.digest('SHA-256', reportBytes);
@@ -320,15 +288,16 @@ export default function App() {
           </label>
           <span className="verdict-badge" style={{ color: 'var(--color-text-muted)', borderColor: 'var(--color-text-muted)' }}>NOT GRADED</span>
         </div>
-        <p className="muted">These are synthetic vector schematics, not demonstration photos. The angle and clearance text is scenario input, not a CV measurement. No ACCEPT/REJECT decision is produced.</p>
+        <p className="fixture-disclaimer" role="note">{DEMO_FIXTURE_PROFILE.id} · {DEMO_FIXTURE_PROFILE.scope}. The green/red labels below are scripted fixture expectations only—not CV outputs, measured inspection results, IPC judgments, or production grades. Calibration: {DEMO_FIXTURE_PROFILE.calibrated ? 'enabled' : 'not performed'}; inspection grading: {DEMO_FIXTURE_PROFILE.inspectionVerdictsEnabled ? 'enabled' : 'disabled'}.</p>
         <div className="result-grid">
           {DEMO_SCENES.map((scene) => (
             <article className="result-panel" key={scene.id} data-demo-scene={scene.id} data-demo-shot={scene.id === 'C' ? 'geometry-overlay' : undefined}>
-              <h3>Joint {scene.id} · {scene.title}</h3>
+              <h3>Joint {scene.id} · Class {scene.referenceClass} · {scene.conditionLabel}</h3>
               <DemoIllustration sceneId={scene.id} />
               <p><strong>{scene.exampleInput}</strong></p>
-              <p className="muted">Illustrative selector mapping: Class {scene.referenceClass} (not a grade). Current selector: Class {productClass}. {scene.note}</p>
-              <span className="verdict-badge" style={{ color: 'var(--color-text-muted)', borderColor: 'var(--color-text-muted)' }}>SIMULATED · NOT GRADED</span>
+              <p className="muted">Current class selector: Class {productClass}. {scene.note}</p>
+              <span className="fixture-scope">SYNTHETIC FIXTURE · NOT AN INSPECTION RESULT</span>
+              <span className="verdict-badge fixture-label" style={{ color: verdictColor(scene.fixtureLabel), borderColor: verdictColor(scene.fixtureLabel) }}>EXPECTED UI LABEL · {scene.fixtureLabel}</span>
             </article>
           ))}
         </div>
