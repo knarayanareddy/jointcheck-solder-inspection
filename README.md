@@ -1,6 +1,7 @@
 # JointCheck — experimental solder-photo inspection prototype
 
 [![Live Demo](https://img.shields.io/badge/Live_Demo-GitHub_Pages-2ea44f?style=for-the-badge)](https://knarayanareddy.github.io/jointcheck-solder-inspection/)
+[![Submission Status](https://img.shields.io/badge/Submission-READY-success?style=for-the-badge)](docs/DEVPOST_SUBMISSION.md)
 
 JointCheck is an early, safety-first prototype for image-assisted solder-workmanship review. It accepts JPEG/PNG photos, computes basic OpenCV image-quality metrics, and proposes geometric contour regions. The geometry library can measure explicitly supplied masks, but the photo route does not yet segment pads or solder. An optional Nebius-compatible vision-model request can suggest candidate joint types and known condition codes—but only after explicit user opt-in. **Production grading remains disabled.**
 
